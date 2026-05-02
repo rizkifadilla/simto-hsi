@@ -57,6 +57,14 @@ Route::middleware('auth')->group(function () {
         Route::resource('employees', EmployeeController::class);
         Route::post('/employees/{id}/reset-face', [EmployeeController::class, 'resetFace'])
             ->name('employees.reset-face');
+        Route::get('employees/{id}/attendance', [EmployeeController::class, 'attendance'])
+            ->name('employees.attendance');
+
+        Route::post('attendance/{id}/update-time', [EmployeeController::class, 'updateAttendanceTime'])
+            ->name('attendance.updateTime');
+
+        Route::post('/attendance/manual', [AttendanceController::class, 'manual'])
+            ->name('attendance.manual');
 
         Route::get('/master-client', [ClientController::class, 'index'])
             ->name('clients.index');

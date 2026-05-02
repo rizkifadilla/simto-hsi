@@ -75,17 +75,66 @@ class DashboardController extends Controller
         }
 
         // ================= RANKING =================
+        $start = Carbon::now()->subMonth()->startOfMonth();
+        $end   = Carbon::now()->subMonth()->endOfMonth();
+
+        // hitung hari kerja
+        $workDays = 0;
+        for ($date = $start->copy(); $date <= $end; $date->addDay()) {
+            if ($date->isWeekday()) $workDays++;
+        }
+
         $ranking = Employee::select(
                 'employees.id',
                 'employees.full_name',
-                DB::raw('COUNT(attendances.id) as total_hadir')
+
+                DB::raw('COUNT(attendances.id) as total_hadir'),
+
+                DB::raw("
+                    SUM(
+                        CASE 
+                            WHEN TIME(attendances.check_in) <= clients.check_in_time
+                            AND TIME(attendances.check_out) >= clients.check_out_time
+                            THEN 1 ELSE 0 
+                        END
+                    ) as tepat_waktu
+                "),
+
+                // ✅ SCORE FIX MAX 10
+                DB::raw("
+                    ROUND(
+                        (
+                            (COUNT(attendances.id) / {$workDays}) * 7
+                            +
+                            (
+                                SUM(
+                                    CASE 
+                                        WHEN TIME(attendances.check_in) <= clients.check_in_time
+                                        AND TIME(attendances.check_out) >= clients.check_out_time
+                                        THEN 1 ELSE 0 
+                                    END
+                                ) / NULLIF(COUNT(attendances.id),0) * 3
+                            )
+                        )
+                    , 1)
+                as score
+                ")
             )
-            ->leftJoin('attendances', function ($join) {
+
+            ->leftJoin('attendances', function ($join) use ($start, $end) {
                 $join->on('employees.id', '=', 'attendances.employee_id')
-                     ->whereNotNull('attendances.check_in');
+                    ->whereNotNull('attendances.check_in')
+                    ->whereBetween('attendances.date', [$start, $end]);
             })
+
+            ->leftJoin('clients', 'clients.id', '=', 'employees.client_id')
+
             ->groupBy('employees.id', 'employees.full_name')
+
+            ->orderByDesc('score')
             ->orderByDesc('total_hadir')
+            ->orderByDesc('tepat_waktu')
+
             ->limit(5)
             ->get();
 

@@ -17,11 +17,13 @@ class Attendance extends Model
         'check_in_lat',
         'check_in_long',
         'check_in_photo',
+        'ip_address_check_in',
 
         'check_out',
         'check_out_lat',
         'check_out_long',
         'check_out_photo',
+        'ip_address_check_out',
 
         'working_minutes',
         'task',

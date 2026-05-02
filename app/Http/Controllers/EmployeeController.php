@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Employee;
 use App\Models\User;
 use App\Models\Client;
+use App\Models\Attendance;
+use Carbon\Carbon;
 
 class EmployeeController extends Controller
 {
@@ -141,5 +143,48 @@ class EmployeeController extends Controller
         $employee->save();
 
         return redirect()->back()->with('success', 'Face data has been reset!');
+    }
+
+    public function attendance($id)
+    {
+        $employee = Employee::findOrFail($id);
+
+        $attendances = Attendance::where('employee_id', $id)
+            ->orderBy('date', 'desc')
+            ->get();
+
+        return view('pages.master.employee.attendance', [
+            'employee' => $employee,
+            'attendances' => $attendances,
+            'type_menu' => 'master'
+        ]);
+    }
+
+    public function updateAttendanceTime(Request $request, $id)
+    {
+        $request->validate([
+            'check_in' => 'nullable',
+            'check_out' => 'nullable',
+        ]);
+
+        $attendance = Attendance::findOrFail($id);
+
+        $checkIn = $request->check_in;
+        $checkOut = $request->check_out;
+
+        $workingMinutes = null;
+
+        if ($checkIn && $checkOut) {
+            $workingMinutes = Carbon::parse($checkOut)
+                ->diffInMinutes(Carbon::parse($checkIn));
+        }
+
+        $attendance->update([
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'working_minutes' => $workingMinutes
+        ]);
+
+        return back()->with('success', 'Attendance updated!');
     }
 }

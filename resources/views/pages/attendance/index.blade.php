@@ -2,6 +2,9 @@
 
 @section('title', 'Absensi')
 
+@push('style')
+@endpush
+
 @section('main')
 <div class="main-content">
     <section class="section">
@@ -14,6 +17,11 @@
             <div class="card">
                 <div class="card-body text-center">
 
+                    {{-- STATUS --}}
+                    <div id="statusInfo" class="alert alert-secondary">
+                        Mengecek sistem absensi...
+                    </div>
+
                     {{-- DISTANCE --}}
                     <div id="distanceInfo" class="alert alert-secondary">
                         Mengambil lokasi...
@@ -21,15 +29,11 @@
 
                     {{-- ALERT --}}
                     @if(session('error'))
-                        <div class="alert alert-danger">
-                            {{ session('error') }}
-                        </div>
+                        <div class="alert alert-danger">{{ session('error') }}</div>
                     @endif
 
                     @if(session('success'))
-                        <div class="alert alert-success">
-                            {{ session('success') }}
-                        </div>
+                        <div class="alert alert-success">{{ session('success') }}</div>
                     @endif
 
                     <form method="POST" action="{{ route('attendance.store') }}">
@@ -44,21 +48,27 @@
 
                             {{-- CAMERA --}}
                             <div class="col-md-6">
-                                <video id="video" width="100%" autoplay></video>
+                                <div style="position:relative;">
+                                    <video id="video" width="100%" autoplay></video>
+
+                                    <div id="guideBox"
+                                        style="position:absolute; top:20%; left:20%; width:60%; height:60%;
+                                               border:2px dashed #00ffcc; border-radius:10px;">
+                                    </div>
+                                </div>
 
                                 <canvas id="canvas" style="display:none;"></canvas>
 
-                                <button type="button" id="btnCapture" class="btn btn-primary mt-2">
-                                    Ambil Foto
-                                </button>
+                                <div id="instruction" class="mt-2 text-primary fw-bold">
+                                    Siapkan wajah...
+                                </div>
 
                                 <img id="preview" width="100%" class="mt-2">
                             </div>
 
                             {{-- INFO --}}
                             <div class="col-md-6 text-left">
-                                <input type="text"
-                                       id="locationText"
+                                <input type="text" id="locationText"
                                        class="form-control mb-2"
                                        readonly
                                        placeholder="Lokasi Anda">
@@ -83,19 +93,19 @@
 
                         <br>
 
-                        {{-- BUTTON CENTER --}}
-                        <div class="text-center" id="actionArea" style="display: none">
+                        {{-- BUTTON --}}
+                        <div class="text-center" id="actionArea" style="display:none">
                             @if(!$attendance || !$attendance->check_in)
-                                <button type="submit" id="btnSubmit" class="btn btn-success btn-lg px-5">
+                                <button type="submit" class="btn btn-success btn-lg px-5">
                                     Check In
                                 </button>
                             @elseif(!$attendance->check_out)
-                                <button type="submit" id="btnSubmit" class="btn btn-warning btn-lg px-5">
+                                <button type="submit" class="btn btn-warning btn-lg px-5">
                                     Check Out
                                 </button>
                             @else
                                 <button type="button" class="btn btn-secondary btn-lg px-5" disabled>
-                                    Sudah Absen Hari Ini
+                                    Sudah Absen
                                 </button>
                             @endif
                         </div>
@@ -111,30 +121,39 @@
 @endsection
 
 @push('scripts')
-
 <script src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
 
+    const video  = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+
     let clientLat = {{ $clientLat ?? 'null' }};
     let clientLng = {{ $clientLng ?? 'null' }};
     let radius    = {{ $radius ?? 100 }};
-    let isWithinRadius = false;
 
-    // ================= MODEL =================
-    const MODEL_URL = window.location.origin + '/models';
+    // FIX BOOLEAN
+    let useDistance = {{ $useDistance ? 'true' : 'false' }};
+    let isWithinRadius = !useDistance;
 
-    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+    let targetDirection = null;
+    let movementPassed  = false;
+    let hasMoved        = false;
+    let autoCaptured    = false;
+    let initialized     = false;
 
-    // ================= CAMERA =================
-    let video  = document.getElementById('video');
-    let canvas = document.getElementById('canvas');
+    const directions = ['LEFT', 'RIGHT', 'UP', 'DOWN'];
 
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => video.srcObject = stream);
+    function randomDirection() {
+        return directions[Math.floor(Math.random() * directions.length)];
+    }
+
+    function show(text, type = 'secondary') {
+        let el = document.getElementById('distanceInfo');
+        el.className = 'alert alert-' + type;
+        el.innerHTML = text;
+    }
 
     // ================= DISTANCE =================
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -143,14 +162,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         let dLon = (lon2 - lon1) * Math.PI / 180;
 
         let a = Math.sin(dLat / 2) ** 2 +
-            Math.cos(lat1 * Math.PI / 180) *
-            Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) ** 2;
+                Math.cos(lat1 * Math.PI / 180) *
+                Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) ** 2;
 
         return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
 
-    // ================= AUTO GPS =================
     navigator.geolocation.getCurrentPosition(function (pos) {
 
         let lat = pos.coords.latitude;
@@ -159,104 +177,139 @@ document.addEventListener('DOMContentLoaded', async function () {
         document.getElementById('latitude').value  = lat;
         document.getElementById('longitude').value = lng;
 
+        if (!useDistance) {
+            isWithinRadius = true;
+            show("✅ Absensi tanpa lokasi aktif", "success");
+            startLiveness();
+            return;
+        }
+
         let meter = calculateDistance(lat, lng, clientLat, clientLng);
         meter = Math.round(meter);
 
-        let info = document.getElementById('distanceInfo');
-        let actionArea = document.getElementById('actionArea');
-
         if (meter <= radius) {
-            info.className = 'alert alert-success';
-            info.innerHTML = "✅ Dalam area (" + meter + " meter)";
             isWithinRadius = true;
-            actionArea.style.display = 'block';
+            show("✅ Dalam area (" + meter + " meter)", "success");
+            startLiveness();
         } else {
-            info.className = 'alert alert-danger';
-            info.innerHTML = "❌ Di luar area (" + meter + " meter)";
             isWithinRadius = false;
-            actionArea.style.display = 'none';
+            show("❌ Di luar area (" + meter + " meter)", "danger");
+            document.getElementById('actionArea').style.display = 'none';
         }
 
     }, function () {
-        document.getElementById('distanceInfo').innerHTML = "❌ GPS gagal";
+        show("❌ GPS gagal", "danger");
     });
 
-    // ================= CAPTURE =================
-    document.getElementById('btnCapture').addEventListener('click', async function () {
+    // ================= LOAD MODEL =================
+    async function startLiveness() {
 
-        let ctx = canvas.getContext('2d');
+        const MODEL_URL = window.location.origin + '/models';
 
-        canvas.width  = video.videoWidth;
-        canvas.height = video.videoHeight;
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-        ctx.drawImage(video, 0, 0);
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => video.srcObject = stream);
 
-        const detections = await faceapi.detectAllFaces(
-            canvas,
-            new faceapi.TinyFaceDetectorOptions()
-        )
-        .withFaceLandmarks()
-        .withFaceDescriptors();
+        show("📷 Arahkan wajah ke kamera", "info");
 
-        if (detections.length === 0) {
-            alert('❌ Wajah tidak terdeteksi!');
-            return;
-        }
+        setInterval(async () => {
 
-        if (detections.length > 1) {
-            alert('❌ Hanya 1 wajah!');
-            return;
-        }
+            if (!video.videoWidth) return;
 
-        const detection = detections[0];
+            const detection = await faceapi
+                .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+                .withFaceLandmarks();
 
-        if (detection.detection.box.width < 150) {
-            alert('❌ Wajah terlalu jauh!');
-            return;
-        }
-
-        let descriptor = Array.from(detection.descriptor);
-
-        document.getElementById('face_descriptor').value =
-            JSON.stringify(descriptor);
-
-        let data = canvas.toDataURL('image/png');
-
-        document.getElementById('photo').value = data;
-        document.getElementById('preview').src = data;
-
-        alert('✅ Foto berhasil diambil');
-    });
-
-    // ================= VALIDASI =================
-    document.querySelector('form').addEventListener('submit', function (e) {
-
-        if (!isWithinRadius) {
-            e.preventDefault();
-            alert('❌ Anda di luar area!');
-            return;
-        }
-
-        if (!document.getElementById('photo').value) {
-            e.preventDefault();
-            alert('❌ Ambil foto dulu!');
-            return;
-        }
-
-        let isCheckout = {{ $attendance && $attendance->check_in && !$attendance->check_out ? 'true' : 'false' }};
-
-        if (isCheckout) {
-            let task = document.querySelector('[name="task"]').value;
-
-            if (!task) {
-                e.preventDefault();
-                alert('❌ Isi kegiatan dulu!');
+            if (!detection) {
+                show("👤 Wajah tidak terdeteksi", "warning");
+                return;
             }
-        }
 
-    });
+            if (!initialized) {
+                targetDirection = randomDirection();
+                initialized = true;
+                show("➡️ Gerakkan kepala ke: <b>" + targetDirection + "</b>", "primary");
+                return;
+            }
+
+            const nose   = detection.landmarks.getNose()[3];
+            const jaw    = detection.landmarks.getJawOutline();
+            const left   = jaw[0];
+            const right  = jaw[16];
+            const top    = detection.detection.box.top;
+            const bottom = detection.detection.box.bottom;
+
+            const centerX = (left.x + right.x) / 2;
+            const centerY = (top + bottom) / 2;
+
+            const dx = nose.x - centerX;
+            const dy = nose.y - centerY;
+
+            const thresholdX = 20;
+            const thresholdY = 15;
+
+            let currentDirection = 'CENTER';
+
+            if (dx > thresholdX) currentDirection = 'RIGHT';
+            else if (dx < -thresholdX) currentDirection = 'LEFT';
+            else if (dy > thresholdY) currentDirection = 'DOWN';
+            else if (dy < -thresholdY) currentDirection = 'UP';
+
+            // ================= GERAK =================
+            if (!movementPassed) {
+                if (currentDirection === targetDirection) {
+                    hasMoved = true;
+                    movementPassed = true;
+                    show("✅ Bagus! Kembali ke tengah", "success");
+                } else {
+                    show("➡️ Ikuti arah: <b>" + targetDirection + "</b>", "primary");
+                }
+                return;
+            }
+
+            // ================= BALIK KE TENGAH =================
+            if (movementPassed && hasMoved && currentDirection === 'CENTER' && !autoCaptured) {
+
+                autoCaptured = true;
+
+                let ctx = canvas.getContext('2d');
+                canvas.width  = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                ctx.drawImage(video, 0, 0);
+
+                const fullDetection = await faceapi
+                    .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+
+                if (!fullDetection) {
+                    show("❌ Gagal ambil wajah", "danger");
+                    autoCaptured = false;
+                    return;
+                }
+
+                let descriptor = Array.from(fullDetection.descriptor);
+
+                document.getElementById('face_descriptor').value =
+                    JSON.stringify(descriptor);
+
+                let data = canvas.toDataURL('image/png');
+
+                document.getElementById('photo').value   = data;
+                document.getElementById('preview').src   = data;
+
+                show("✅ Siap absen", "success");
+
+                document.getElementById('actionArea').style.display = 'block';
+            }
+
+        }, 700);
+    }
 
 });
 </script>
-
 @endpush

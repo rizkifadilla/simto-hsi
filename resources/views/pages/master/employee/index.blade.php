@@ -133,6 +133,11 @@
                                                                 Reset Face
                                                             </button>
                                                         </form>
+
+                                                        <a href="{{ route('employees.attendance', $emp->id) }}" 
+                                                            class="btn btn-primary btn-sm">
+                                                                Attendance
+                                                        </a>
                                                     </td>
                                                 </tr>
                                             @endforeach

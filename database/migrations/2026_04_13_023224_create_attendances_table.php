@@ -25,12 +25,14 @@ return new class extends Migration
             $table->decimal('check_in_lat', 10, 7)->nullable();
             $table->decimal('check_in_long', 10, 7)->nullable();
             $table->string('check_in_photo')->nullable();
+            $table->string('ip_address_check_in')->nullable();
 
             // CHECK OUT
             $table->time('check_out')->nullable();
             $table->decimal('check_out_lat', 10, 7)->nullable();
             $table->decimal('check_out_long', 10, 7)->nullable();
             $table->string('check_out_photo')->nullable();
+            $table->string('ip_address_check_out')->nullable();
 
             // RESULT
             $table->integer('working_minutes')->nullable(); // biar fleksibel

@@ -11,54 +11,100 @@ class AttendanceSeeder extends Seeder
 {
     public function run(): void
     {
-        $employees = Employee::all();
+        $employees = Employee::with('client')->get();
 
         foreach ($employees as $emp) {
 
-            // generate 30 hari ke belakang
-            for ($i = 0; $i < 30; $i++) {
+            // =========================
+            // 1. BULAN LALU (FULL)
+            // =========================
+            $startLastMonth = Carbon::now()->subMonth()->startOfMonth();
+            $endLastMonth   = Carbon::now()->subMonth()->endOfMonth();
 
-                $date = Carbon::now()->subDays($i);
+            for ($date = $startLastMonth->copy(); $date <= $endLastMonth; $date->addDay()) {
 
-                // skip random biar ada yang tidak hadir
-                if (rand(1, 10) <= 2) {
-                    continue;
-                }
+                // skip weekend
+                if (!$date->isWeekday()) continue;
 
-                $checkIn = Carbon::parse($date->format('Y-m-d') . ' 08:' . rand(0, 30));
-                $checkOut = Carbon::parse($date->format('Y-m-d') . ' 17:' . rand(0, 30));
+                // skip random (biar ada bolos)
+                if (rand(1, 10) <= 2) continue;
 
-                $workingMinutes = $checkOut->diffInMinutes($checkIn);
+                $this->createAttendance($emp, $date);
+            }
 
-                Attendance::create([
-                    'employee_id' => $emp->id,
-                    'date' => $date->format('Y-m-d'),
+            // =========================
+            // 2. BULAN SEKARANG (SAMPAI HARI INI)
+            // =========================
+            $startThisMonth = Carbon::now()->startOfMonth();
+            $today = Carbon::now();
 
-                    // CHECK IN
-                    'check_in' => $checkIn->format('H:i:s'),
-                    'check_in_lat' => -6.2000000 + rand(1, 100) / 10000,
-                    'check_in_long' => 106.816666 + rand(1, 100) / 10000,
-                    'check_in_photo' => 'attendance/sample-in.jpg',
+            for ($date = $startThisMonth->copy(); $date <= $today; $date->addDay()) {
 
-                    // CHECK OUT
-                    'check_out' => $checkOut->format('H:i:s'),
-                    'check_out_lat' => -6.2000000 + rand(1, 100) / 10000,
-                    'check_out_long' => 106.816666 + rand(1, 100) / 10000,
-                    'check_out_photo' => 'attendance/sample-out.jpg',
+                if (!$date->isWeekday()) continue;
 
-                    // RESULT
-                    'working_minutes' => $workingMinutes,
-                    'task' => $this->randomTask(),
+                if (rand(1, 10) <= 2) continue;
 
-                    // VALIDATION
-                    'is_within_radius' => true,
-                    'is_face_valid' => true,
-
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                $this->createAttendance($emp, $date);
             }
         }
+    }
+
+    private function createAttendance($emp, $date)
+    {
+        $client = $emp->client;
+
+        // default kalau client belum ada
+        $checkInLimit = $client->check_in_time ?? '08:00:00';
+        $checkOutLimit = $client->check_out_time ?? '17:00:00';
+
+        // 90% tepat waktu
+        $isOnTime = rand(1, 10) <= 9;
+
+        if ($isOnTime) {
+            // TEPAT WAKTU
+            $checkIn = Carbon::parse($date->format('Y-m-d') . ' ' . $checkInLimit)
+                ->subMinutes(rand(0, 30));
+
+            $checkOut = Carbon::parse($date->format('Y-m-d') . ' ' . $checkOutLimit)
+                ->addMinutes(rand(0, 30));
+        } else {
+            // TELAT / PULANG CEPAT
+            $checkIn = Carbon::parse($date->format('Y-m-d') . ' ' . $checkInLimit)
+                ->addMinutes(rand(1, 60));
+
+            $checkOut = Carbon::parse($date->format('Y-m-d') . ' ' . $checkOutLimit)
+                ->subMinutes(rand(1, 60));
+        }
+
+        $workingMinutes = $checkOut->diffInMinutes($checkIn);
+
+        Attendance::create([
+            'employee_id' => $emp->id,
+            'date' => $date->format('Y-m-d'),
+
+            // CHECK IN
+            'check_in' => $checkIn->format('H:i:s'),
+            'check_in_lat' => $client->latitude ?? -6.200000,
+            'check_in_long' => $client->longitude ?? 106.816666,
+            'check_in_photo' => 'attendance/sample-in.jpg',
+
+            // CHECK OUT
+            'check_out' => $checkOut->format('H:i:s'),
+            'check_out_lat' => $client->latitude ?? -6.200000,
+            'check_out_long' => $client->longitude ?? 106.816666,
+            'check_out_photo' => 'attendance/sample-out.jpg',
+
+            // RESULT
+            'working_minutes' => $workingMinutes,
+            'task' => $this->randomTask(),
+
+            // VALIDATION
+            'is_within_radius' => true,
+            'is_face_valid' => true,
+
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     private function randomTask()

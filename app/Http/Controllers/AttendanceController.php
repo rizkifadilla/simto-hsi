@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Attendance;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 
 class AttendanceController extends Controller
 {
@@ -23,7 +25,8 @@ class AttendanceController extends Controller
             'clientLat' => $employee->client->latitude ?? null,
             'clientLng' => $employee->client->longitude ?? null,
             'radius' => $employee->client->attendance_radius ?? 100,
-            'type_menu' => 'attendance'
+            'type_menu' => 'attendance',
+            'useDistance'=> $employee->absent_using_distance ?? false,
         ]);
     }
 
@@ -55,12 +58,11 @@ class AttendanceController extends Controller
         // FACE VALIDATION
         // ======================
         $newDescriptor = json_decode($request->face_descriptor, true);
-
-        $isFaceValid = true;
+        $isFaceValid   = true;
 
         if (!$employee->face_descriptor) {
 
-            // first register
+            // FIRST REGISTER FACE
             $employee->update([
                 'face_descriptor' => json_encode($newDescriptor)
             ]);
@@ -69,10 +71,10 @@ class AttendanceController extends Controller
 
             $savedDescriptor = json_decode($employee->face_descriptor, true);
 
-            $distance = $this->faceDistance($savedDescriptor, $newDescriptor);
+            $faceDistance = $this->faceDistance($savedDescriptor, $newDescriptor);
 
-            if ($distance > 0.45) {
-                return back()->with('error', '❌ Face not match! (' . $distance . ')');
+            if ($faceDistance > 0.45) {
+                return back()->with('error', '❌ Face not match! (' . $faceDistance . ')');
             }
         }
 
@@ -80,19 +82,18 @@ class AttendanceController extends Controller
         // LOCATION VALIDATION
         // ======================
         $client = $employee->client;
-
         $isWithinRadius = false;
 
         if ($employee->absent_using_distance && $client) {
 
-            $distance = $this->calculateDistance(
+            $locationDistance = $this->calculateDistance(
                 $request->latitude,
                 $request->longitude,
                 $client->latitude,
                 $client->longitude
             );
 
-            if ($distance <= $client->attendance_radius) {
+            if ($locationDistance <= $client->attendance_radius) {
                 $isWithinRadius = true;
             } else {
                 return back()->with('error', '❌ Outside radius!');
@@ -115,11 +116,11 @@ class AttendanceController extends Controller
         // ======================
         // ATTENDANCE
         // ======================
-        $today = date('Y-m-d');
+        $today = now()->format('Y-m-d');
 
         $attendance = Attendance::firstOrCreate([
             'employee_id' => $employee->id,
-            'date' => $today
+            'date'        => $today
         ]);
 
         // ======================
@@ -128,12 +129,13 @@ class AttendanceController extends Controller
         if (!$attendance->check_in) {
 
             $attendance->update([
-                'check_in' => now()->format('H:i:s'),
-                'check_in_lat' => $request->latitude,
-                'check_in_long' => $request->longitude,
-                'check_in_photo' => $fileName,
-                'is_within_radius' => $isWithinRadius,
-                'is_face_valid' => $isFaceValid,
+                'check_in'            => now()->format('H:i:s'),
+                'check_in_lat'        => $request->latitude,
+                'check_in_long'       => $request->longitude,
+                'check_in_photo'      => $fileName,
+                'is_within_radius'    => $isWithinRadius,
+                'is_face_valid'       => $isFaceValid,
+                'ip_address_check_in' => $request->getClientIp(),
             ]);
 
         } 
@@ -142,23 +144,38 @@ class AttendanceController extends Controller
         // ======================
         else {
 
-            // hitung durasi kerja
-            $checkInTime = Carbon::createFromFormat('H:i:s', $attendance->check_in);
-            $now = Carbon::now();
-
+            $checkInTime    = Carbon::createFromFormat('H:i:s', $attendance->check_in);
+            $now            = now();
             $workingMinutes = $now->diffInMinutes($checkInTime);
 
             $attendance->update([
-                'check_out' => now()->format('H:i:s'),
-                'check_out_lat' => $request->latitude,
-                'check_out_long' => $request->longitude,
-                'check_out_photo' => $fileName,
-                'working_minutes' => $workingMinutes,
-                'task' => $request->task,
+                'check_out'            => $now->format('H:i:s'),
+                'check_out_lat'        => $request->latitude,
+                'check_out_long'       => $request->longitude,
+                'check_out_photo'      => $fileName,
+                'working_minutes'      => $workingMinutes,
+                'task'                 => $request->task,
+                'ip_address_check_out' => $request->getClientIp(),
             ]);
         }
 
         return back()->with('success', '✅ Attendance success');
+    }
+
+    private function calculateDistance($lat1, $lon1, $lat2, $lon2)
+    {
+        $earthRadius = 6371000; // meter
+
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            sin($dLon / 2) * sin($dLon / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c; // hasil meter
     }
 
     public function myAttendance()
@@ -175,56 +192,287 @@ class AttendanceController extends Controller
         ]);
     }
 
+    // public function export(Request $request)
+    // {
+    //     $request->validate([
+    //         'from' => 'required|date',
+    //         'to' => 'required|date|after_or_equal:from'
+    //     ]);
+
+    //     $employeeId = auth()->user()->employee->id;
+
+    //     $data = Attendance::where('employee_id', $employeeId)
+    //         ->whereBetween('date', [$request->from, $request->to])
+    //         ->orderBy('date', 'desc')
+    //         ->get();
+
+    //     $filename = "attendance_" . now()->format('YmdHis') . ".csv";
+
+    //     $headers = [
+    //         "Content-type" => "text/csv",
+    //         "Content-Disposition" => "attachment; filename=$filename",
+    //     ];
+
+    //     $callback = function () use ($data) {
+    //         $file = fopen('php://output', 'w');
+
+    //         // HEADER
+    //         fputcsv($file, [
+    //             'Tanggal',
+    //             'Check In',
+    //             'Check Out',
+    //             'Durasi (Jam)',
+    //             'Lokasi',
+    //             'Face',
+    //             'Kegiatan'
+    //         ]);
+
+    //         foreach ($data as $row) {
+    //             fputcsv($file, [
+    //                 \Carbon\Carbon::parse($row->date)->format('d-m-Y'),
+    //                 $row->check_in,
+    //                 $row->check_out,
+    //                 $row->working_minutes ? round($row->working_minutes / 60, 2) : 0,
+    //                 $row->is_within_radius ? 'Valid' : 'Diluar',
+    //                 $row->is_face_valid ? 'Valid' : 'Invalid',
+    //                 $row->task
+    //             ]);
+    //         }
+
+    //         fclose($file);
+    //     };
+
+    //     return response()->stream($callback, 200, $headers);
+    // }
+
     public function export(Request $request)
     {
         $request->validate([
             'from' => 'required|date',
-            'to' => 'required|date|after_or_equal:from'
+            'to'   => 'required|date|after_or_equal:from',
         ]);
 
-        $employeeId = auth()->user()->employee->id;
+        $employee = auth()->user()->employee->load('client');
 
-        $data = Attendance::where('employee_id', $employeeId)
+        $attendance = Attendance::where('employee_id', $employee->id)
             ->whereBetween('date', [$request->from, $request->to])
-            ->orderBy('date', 'desc')
-            ->get();
+            ->orderBy('date')
+            ->get()
+            ->keyBy(fn($a) => Carbon::parse($a->date)->format('Y-m-d'));
 
-        $filename = "attendance_" . now()->format('YmdHis') . ".csv";
+        $periode = Carbon::parse($request->from)->translatedFormat('j F Y')
+            . ' – '
+            . Carbon::parse($request->to)->translatedFormat('j F Y');
 
-        $headers = [
-            "Content-type" => "text/csv",
-            "Content-Disposition" => "attachment; filename=$filename",
-        ];
+        $html = $this->buildHtml($employee, $attendance, $request->from, $request->to, $periode);
 
-        $callback = function () use ($data) {
-            $file = fopen('php://output', 'w');
+        $filename = 'timesheet_' . now()->format('YmdHis') . '.xls';
 
-            // HEADER
-            fputcsv($file, [
-                'Tanggal',
-                'Check In',
-                'Check Out',
-                'Durasi (Jam)',
-                'Lokasi',
-                'Face',
-                'Kegiatan'
-            ]);
+        return response($html, 200, [
+            'Content-Type'        => 'application/vnd.ms-excel',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Cache-Control'       => 'max-age=0',
+        ]);
+    }
 
-            foreach ($data as $row) {
-                fputcsv($file, [
-                    \Carbon\Carbon::parse($row->date)->format('d-m-Y'),
-                    $row->check_in,
-                    $row->check_out,
-                    $row->working_minutes ? round($row->working_minutes / 60, 2) : 0,
-                    $row->is_within_radius ? 'Valid' : 'Diluar',
-                    $row->is_face_valid ? 'Valid' : 'Invalid',
-                    $row->task
-                ]);
+    private function buildHtml($employee, $attendance, string $from, string $to, string $periode): string
+    {
+        $client = $employee->client;
+
+        // Jam & working hours selalu dari Client
+        $timeIn  = $client?->check_in_time  ? Carbon::parse($client->check_in_time)->format('H:i')  : '';
+        $timeOut = $client?->check_out_time ? Carbon::parse($client->check_out_time)->format('H:i') : '';
+
+        $workingHours = '';
+        if ($client?->check_in_time && $client?->check_out_time) {
+            $mins         = Carbon::parse($client->check_out_time)->diffInMinutes(Carbon::parse($client->check_in_time));
+            $workingHours = sprintf('%d:%02d', intdiv($mins, 60), $mins % 60);
+        }
+
+        $rows = '';
+        $no   = 1;
+
+        $period = CarbonPeriod::create($from, $to);
+
+        foreach ($period as $date) {
+            $key       = $date->format('Y-m-d');
+            $att       = $attendance->get($key);
+            $isWeekend = in_array($date->dayOfWeek, [0, 6]);
+            $hasWork   = $att && $att->check_in;
+
+            $task = $att ? nl2br(e($att->task ?? '')) : '';
+
+            // Warna baris
+            if ($isWeekend) {
+                $rowBg = '#F2F2F2';
+                $bold  = 'font-weight:bold;';
+                $task  = $task ?: ($date->dayOfWeek === 6 ? 'Sabtu' : 'Minggu');
+            } elseif ($att && !$hasWork && $att->task) {
+                // Libur / Cuti
+                $rowBg = '#FCE5CD';
+                $bold  = 'font-weight:bold;';
+            } else {
+                $rowBg = '#FFFFFF';
+                $bold  = '';
             }
 
-            fclose($file);
-        };
+            // Time In / Out / Working Hours hanya tampil kalau hari kerja & check_in ada
+            $rowTimeIn    = $hasWork ? $timeIn    : '';
+            $rowTimeOut   = $hasWork ? $timeOut   : '';
+            $rowWorkHours = $hasWork ? $workingHours : '';
 
-        return response()->stream($callback, 200, $headers);
+            $rows .= "
+                <tr style=\"background:{$rowBg};\">
+                    <td style=\"text-align:center;{$bold}\">{$no}</td>
+                    <td style=\"text-align:center;{$bold}\">{$date->format('j F Y')}</td>
+                    <td style=\"text-align:center;\">{$rowTimeIn}</td>
+                    <td style=\"text-align:center;\">{$rowTimeOut}</td>
+                    <td style=\"text-align:center;\">{$rowWorkHours}</td>
+                    <td style=\"text-align:left;white-space:pre-wrap;\">{$task}</td>
+                </tr>";
+
+            $no++;
+        }
+
+        $companyName    = config('app.company_name', 'PT. Hermes Solusi Integrasi');
+        $companyAddress = config('app.company_address', 'Jl. Contoh No.1, Jakarta');
+        $employeeName   = e($employee->full_name ?? '-');
+        $employeeRole   = e($employee->position  ?? '-');
+
+        return <<<HTML
+        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+              xmlns:x="urn:schemas-microsoft-com:office:excel"
+              xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+            <meta charset="UTF-8"/>
+            <!--[if gte mso 9]>
+            <xml>
+                <x:ExcelWorkbook>
+                    <x:ExcelWorksheets>
+                        <x:ExcelWorksheet>
+                            <x:Name>Timesheet</x:Name>
+                            <x:WorksheetOptions>
+                                <x:Print>
+                                    <x:FitWidth>1</x:FitWidth>
+                                    <x:FitHeight>0</x:FitHeight>
+                                    <x:Landscape/>
+                                </x:Print>
+                            </x:WorksheetOptions>
+                        </x:ExcelWorksheet>
+                    </x:ExcelWorksheets>
+                </x:ExcelWorkbook>
+            </xml>
+            <![endif]-->
+            <style>
+                body, table, td, th {
+                    font-family: Arial, sans-serif;
+                    font-size: 10pt;
+                }
+                table {
+                    border-collapse: collapse;
+                    width: 100%;
+                }
+                td, th {
+                    border: 1px solid #BFBFBF;
+                    padding: 4px 8px;
+                    vertical-align: middle;
+                }
+                .nb td           { border: none; }
+                .company-name    { font-size:13pt; font-weight:bold; color:#1F4E79; border:none; }
+                .company-address { font-size:9pt; color:#555555; border:none; }
+                .title-row td {
+                    background:#1F4E79; color:#FFFFFF;
+                    font-size:14pt; font-weight:bold;
+                    text-align:center; border:none; padding:8px;
+                }
+                .spacer td  { border:none; padding:2px; }
+                .info-label { font-weight:bold; width:130px; border:none; }
+                .info-value { border:none; }
+                .col-header th {
+                    background:#1F4E79; color:#FFFFFF;
+                    text-align:center; font-weight:bold; padding:6px 8px;
+                }
+            </style>
+        </head>
+        <body>
+        <table>
+
+            <!-- Logo + Perusahaan -->
+            <tr class="nb">
+                <td rowspan="2" style="width:50px;text-align:center;font-weight:bold;
+                    color:#1F4E79;font-size:11pt;border:none;">[LOGO]</td>
+                <td colspan="5" class="company-name">{$companyName}</td>
+            </tr>
+            <tr class="nb">
+                <td colspan="5" class="company-address">{$companyAddress}</td>
+            </tr>
+
+            <tr class="spacer"><td colspan="6"></td></tr>
+
+            <!-- Judul -->
+            <tr class="title-row"><td colspan="6">TIMESHEET</td></tr>
+
+            <tr class="spacer"><td colspan="6"></td></tr>
+
+            <!-- Info karyawan -->
+            <tr class="nb">
+                <td class="info-label">Consultant Name</td>
+                <td colspan="5" class="info-value">: {$employeeName}</td>
+            </tr>
+            <tr class="nb">
+                <td class="info-label">Role</td>
+                <td colspan="5" class="info-value">: {$employeeRole}</td>
+            </tr>
+            <tr class="nb">
+                <td class="info-label">Periode</td>
+                <td colspan="5" class="info-value">: {$periode}</td>
+            </tr>
+
+            <tr class="spacer"><td colspan="6"></td></tr>
+
+            <!-- Header tabel -->
+            <tr class="col-header">
+                <th style="width:35px;">No.</th>
+                <th style="width:120px;">Date</th>
+                <th style="width:75px;">Time In</th>
+                <th style="width:75px;">Time Out</th>
+                <th style="width:110px;">Working Hours</th>
+                <th>Task</th>
+            </tr>
+
+            <!-- Data -->
+            {$rows}
+
+        </table>
+        </body>
+        </html>
+        HTML;
+    }
+
+    public function manual(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date',
+            'type' => 'required|in:sakit,izin',
+        ]);
+
+        Attendance::create([
+            'employee_id' => auth()->user()->employee->id,
+            'date' => $request->date,
+
+            // kosong karena bukan hadir
+            'check_in' => null,
+            'check_out' => null,
+
+            'working_minutes' => 0,
+
+            // 🔥 MASUK KE TASK
+            'task' => $request->type,
+
+            'is_within_radius' => false,
+            'is_face_valid' => false,
+        ]);
+
+        return back()->with('success', 'Absen manual berhasil disimpan');
     }
 }

@@ -94,17 +94,35 @@
     {{-- RANKING --}}
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"><h4>Top Karyawan</h4></div>
+            <div class="card-header">
+                <h4>Employee of the month</h4>
+            </div>
+
             <div class="card-body">
                 <ul class="list-group">
-                    @foreach($ranking as $r)
-                    <li class="list-group-item d-flex justify-content-between">
-                        {{ $r->full_name }}
-                        <span class="badge badge-primary">
-                            {{ $r->total_hadir }} hari
+
+                    @foreach($ranking as $i => $r)
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+
+                        <div>
+                            <strong>
+                                #{{ $i + 1 }} - {{ $r->full_name }}
+                            </strong>
+
+                            <div class="small text-muted">
+                                Hadir: {{ $r->total_hadir }} |
+                                Tepat waktu: {{ $r->tepat_waktu ?? 0 }}
+                            </div>
+                        </div>
+
+                        <span class="badge 
+                            {{ $i == 0 ? 'badge-warning' : ($i == 1 ? 'badge-info' : 'badge-success') }}">
+                            ⭐ {{ $r->score ?? 0 }}/10
                         </span>
+
                     </li>
                     @endforeach
+
                 </ul>
             </div>
         </div>
