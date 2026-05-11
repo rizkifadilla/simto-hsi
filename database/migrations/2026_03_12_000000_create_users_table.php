@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('password');
 
             // role system
-            $table->enum('role', ['admin', 'supervisor', 'employee'])
+            $table->enum('role', ['admin', 'talent acquisition', 'employee'])
                 ->default('employee');
 
             // relasi ke karyawan

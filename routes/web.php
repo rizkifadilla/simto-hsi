@@ -40,7 +40,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function () {
-    Route::middleware('role:admin,supervisor')->group(function () {
+    Route::middleware('role:admin')->group(function () {
 
         // Dashboard
         Route::get('/dashboard-general-dashboard', [DashboardController::class, 'index']);
@@ -70,6 +70,9 @@ Route::middleware('auth')->group(function () {
             ->name('clients.index');
         Route::resource('clients', ClientController::class);
 
+    });
+
+    Route::middleware('role:admin,talent acquisition')->group(function () {
         Route::resource('career', JobController::class);
         Route::get('/career/{id}/applicants', [JobController::class, 'applicants'])
             ->name('career.applicants');

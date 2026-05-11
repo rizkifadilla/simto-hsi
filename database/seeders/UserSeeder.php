@@ -21,12 +21,12 @@ class UserSeeder extends Seeder
             'is_active' => true
         ]);
 
-        // SUPERVISOR
+        // talent acquisition
         User::create([
-            'name' => 'Supervisor Lapangan',
-            'email' => 'supervisor@gmail.com',
+            'name' => 'talent acquisition Lapangan',
+            'email' => 'talentacquisition@gmail.com',
             'password' => Hash::make('password'),
-            'role' => 'supervisor',
+            'role' => 'talent acquisition',
             'employee_id' => 'EMP002',
             'company' => 'PT Outsource Maju',
             'is_active' => true

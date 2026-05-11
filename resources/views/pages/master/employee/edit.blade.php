@@ -34,7 +34,7 @@
                                         <label>Role</label>
                                         <select name="role" class="form-control">
                                             <option value="employee" {{ $employee->user->role == 'employee' ? 'selected' : '' }}>Employee</option>
-                                            <option value="supervisor" {{ $employee->user->role == 'supervisor' ? 'selected' : '' }}>Supervisor</option>
+                                            <option value="talent acquisition" {{ $employee->user->role == 'talent acquisition' ? 'selected' : '' }}>Talent Acquisition</option>
                                             <option value="admin" {{ $employee->user->role == 'admin' ? 'selected' : '' }}>
                                                 Admin</option>
                                         </select>

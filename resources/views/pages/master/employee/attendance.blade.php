@@ -4,6 +4,16 @@
 
 @push('style')
     <link rel="stylesheet" href="{{ asset('library/datatables/media/css/jquery.dataTables.min.css') }}">
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        input[type="time"]::-webkit-datetime-edit-ampm-field {
+            display: none;
+        }
+        .flatpickr-calendar {
+            z-index: 99999 !important;
+        }
+    </style>
 @endpush
 
 @section('main')
@@ -59,6 +69,8 @@
                                             <span class="badge badge-warning">Sakit</span>
                                         @elseif($row->task == 'izin')
                                             <span class="badge badge-info">Izin</span>
+                                        @elseif($row->task == 'cuti')
+                                            <span class="badge badge-info">Cuti</span>
                                         @else
                                             {{ $row->task }}
                                         @endif
@@ -107,22 +119,12 @@
 
                     <div class="form-group">
                         <label>Check In</label>
-                        <input 
-                            type="time" 
-                            name="check_in" 
-                            id="check_in" 
-                            class="form-control"
-                        >
+                        <input type="text" name="check_in" id="check_in" class="form-control">
                     </div>
 
                     <div class="form-group">
                         <label>Check Out</label>
-                        <input 
-                            type="time" 
-                            name="check_out" 
-                            id="check_out" 
-                            class="form-control"
-                        >
+                        <input type="text" name="check_out" id="check_out" class="form-control">
                     </div>
 
                 </div>
@@ -161,6 +163,7 @@
                             <option value="">-- Pilih --</option>
                             <option value="sakit">Sakit</option>
                             <option value="izin">Izin</option>
+                            <option value="cuti">Cuti</option>
                         </select>
                     </div>
 
@@ -180,19 +183,50 @@
 @push('scripts')
     <script src="{{ asset('library/datatables/media/js/jquery.dataTables.min.js') }}"></script>
     <script src="{{ asset('library/jquery-ui-dist/jquery-ui.min.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
     <script>
-        $('#table-1').DataTable();
+        $('#table-1').DataTable({
+            order: [[0, 'desc']]
+        });
+        let checkInPicker = flatpickr("#check_in", {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i",
+            time_24hr: true,
+            allowInput: true
+        });
 
-        $('.editBtn').on('click', function () {
-            let id = $(this).data('id');
-            let checkin = $(this).data('checkin');
-            let checkout = $(this).data('checkout');
+        let checkOutPicker = flatpickr("#check_out", {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i",
+            time_24hr: true,
+            allowInput: true
+        });
 
-            $('#check_in').val(checkin);
-            $('#check_out').val(checkout);
+        $(document).on('click', '.editBtn', function () {
 
-            $('#editForm').attr('action', '/attendance/' + id + '/update-time');
+            let id = $(this).attr('data-id');
+            let checkin = $(this).attr('data-checkin');
+            let checkout = $(this).attr('data-checkout');
+
+            checkin = (checkin && checkin !== 'null')
+                ? checkin.slice(0, 5)
+                : '';
+
+            checkout = (checkout && checkout !== 'null')
+                ? checkout.slice(0, 5)
+                : '';
+
+            // gunakan setDate flatpickr
+            checkInPicker.setDate(checkin, true, "H:i");
+            checkOutPicker.setDate(checkout, true, "H:i");
+
+            $('#editForm').attr(
+                'action',
+                '/attendance/' + id + '/update-time'
+            );
 
             $('#editModal').modal('show');
         });

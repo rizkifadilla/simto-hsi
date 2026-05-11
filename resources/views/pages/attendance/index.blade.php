@@ -3,6 +3,22 @@
 @section('title', 'Absensi')
 
 @push('style')
+<style>
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+            opacity: .8;
+        }
+        50% {
+            transform: scale(1.02);
+            opacity: 1;
+        }
+        100% {
+            transform: scale(1);
+            opacity: .8;
+        }
+    }
+</style>
 @endpush
 
 @section('main')
@@ -48,22 +64,51 @@
 
                             {{-- CAMERA --}}
                             <div class="col-md-6">
-                                <div style="position:relative;">
-                                    <video id="video" width="100%" autoplay></video>
 
+                                <div style="position:relative; overflow:hidden; border-radius:12px;">
+
+                                    <video 
+                                        id="video"
+                                        width="100%"
+                                        autoplay
+                                        playsinline
+                                        style="
+                                            background:#000;
+                                            border-radius:12px;
+                                            object-fit:cover;
+                                            transform: scaleX(-1);
+                                        ">
+                                    </video>
+
+                                    <!-- FACE GUIDE -->
                                     <div id="guideBox"
-                                        style="position:absolute; top:20%; left:20%; width:60%; height:60%;
-                                               border:2px dashed #00ffcc; border-radius:10px;">
+                                        style="
+                                            position:absolute;
+                                            top:20%;
+                                            left:20%;
+                                            width:60%;
+                                            height:60%;
+                                            border:3px dashed #00ffcc;
+                                            border-radius:20px;
+                                            box-shadow:0 0 15px rgba(0,255,200,.5);
+                                            animation:pulse 1.5s infinite;
+                                        ">
                                     </div>
+
                                 </div>
 
                                 <canvas id="canvas" style="display:none;"></canvas>
 
-                                <div id="instruction" class="mt-2 text-primary fw-bold">
+                                <div id="instruction" class="mt-3 text-center font-weight-bold text-primary">
                                     Siapkan wajah...
                                 </div>
 
-                                <img id="preview" width="100%" class="mt-2">
+                                <img 
+                                    id="preview"
+                                    width="100%"
+                                    class="mt-3 rounded shadow-sm"
+                                >
+
                             </div>
 
                             {{-- INFO --}}

@@ -9,8 +9,8 @@
 
         <ul class="sidebar-menu">
 
-            {{-- ================= ADMIN & SUPERVISOR ================= --}}
-            @if(auth()->user()->role !== 'employee')
+            {{-- ================= ADMIN & TALENT ACQUISITION ================= --}}
+            @if(auth()->user()->role == 'admin')
 
             <li class="menu-header">Dashboard</li>
 
@@ -44,14 +44,16 @@
                     </li>
                 </ul>
             </li>
-
+            @endif
+            @if(auth()->user()->role == 'talent acquisition' || auth()->user()->role == 'admin')
             <li class="{{ Request::is('career') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ url('career') }}">
                     <i class="fas fa-briefcase"></i> <span>Job</span>
                 </a>
             </li>
-
             @endif
+
+            
 
             {{-- ================= SEMUA ROLE ================= --}}
             <li class="menu-header">Attendance</li>

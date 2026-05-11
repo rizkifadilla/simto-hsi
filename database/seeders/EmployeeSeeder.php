@@ -13,7 +13,7 @@ class EmployeeSeeder extends Seeder
     {
         // ambil data user & client
         $admin = User::where('email', 'admin@gmail.com')->first();
-        $supervisor = User::where('email', 'supervisor@gmail.com')->first();
+        $talentacquisition = User::where('email', 'talentacquisition@gmail.com')->first();
         $employee1 = User::where('email', 'employee1@gmail.com')->first();
         $employee2 = User::where('email', 'employee2@gmail.com')->first();
 
@@ -42,14 +42,14 @@ class EmployeeSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'user_id' => $supervisor->id,
+                'user_id' => $talentacquisition->id,
                 'client_id' => $client1->id,
                 'employee_id' => 'EMP002',
-                'full_name' => 'Supervisor Lapangan',
+                'full_name' => 'talent acquisition',
                 'nik_ktp' => '318xxxxxxxxx',
                 'phone' => '0822222222',
-                'email' => 'supervisor@gmail.com',
-                'position' => 'Supervisor',
+                'email' => 'talentacquisition@gmail.com',
+                'position' => 'talent acquisition',
                 'division' => 'Operasional',
                 'placement' => 'Site A',
                 'join_date' => now(),

@@ -453,7 +453,7 @@ class AttendanceController extends Controller
     {
         $request->validate([
             'date' => 'required|date',
-            'type' => 'required|in:sakit,izin',
+            'type' => 'required|in:sakit,izin,cuti',
         ]);
 
         Attendance::create([
@@ -466,7 +466,7 @@ class AttendanceController extends Controller
 
             'working_minutes' => 0,
 
-            // 🔥 MASUK KE TASK
+            // MASUK KE TASK
             'task' => $request->type,
 
             'is_within_radius' => false,
