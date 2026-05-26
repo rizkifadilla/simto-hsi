@@ -22,7 +22,7 @@
 
             @if ($errors->any())
                 <div class="alert alert-danger">
-                    Email atau password salah
+                    Incorrect email or password
                 </div>
             @endif
 
@@ -39,11 +39,6 @@
             <div class="form-group">
                 <div class="d-block">
                     <label for="password" class="control-label">Password</label>
-                    <div class="float-right">
-                        <a href="#" class="text-small">
-                            Forgot Password?
-                        </a>
-                    </div>
                 </div>
 
                 <input id="password"

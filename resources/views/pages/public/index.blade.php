@@ -17,7 +17,7 @@
                     name="search"
                     value="{{ request('search') }}"
                     class="form-control"
-                    placeholder="Cari jabatan atau lokasi..."
+                    placeholder="Search for a position or location..."
                 >
                 <button class="btn btn-primary">Search</button>
             </div>
@@ -32,7 +32,7 @@
                 class="form-select" 
                 onchange="this.form.submit()"
             >
-                <option value="">Terbaru</option>
+                <option value="">Latest</option>
                 <option value="deadline" {{ request('sort') == 'deadline' ? 'selected' : '' }}>
                     Deadline
                 </option>
@@ -105,7 +105,7 @@
             <div class="card mb-3 p-3">
                 <h6>Job Type</h6>
 
-                @foreach(['fulltime', 'parttime', 'remote', 'contract'] as $type)
+                @foreach(['fulltime', 'parttime'] as $type)
                     <div class="form-check">
                         <input 
                             class="form-check-input" 

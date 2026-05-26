@@ -78,7 +78,7 @@
                     <ul class="navbar-nav ms-4 me-auto">
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('career.index') }}">
-                                Lowongan
+                                Vacancy
                             </a>
                         </li>
                     </ul>

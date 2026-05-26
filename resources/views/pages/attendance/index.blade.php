@@ -116,7 +116,7 @@
                                 <input type="text" id="locationText"
                                        class="form-control mb-2"
                                        readonly
-                                       placeholder="Lokasi Anda">
+                                       placeholder="Your location">
 
                                 @if($attendance)
                                     <div class="alert alert-info">

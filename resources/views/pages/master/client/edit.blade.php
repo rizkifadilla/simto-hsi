@@ -158,7 +158,7 @@
                 fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
                     .then(res => res.json())
                     .then(data => {
-                        if (!data.length) return alert('Lokasi tidak ditemukan');
+                        if (!data.length) return alert('Location not found');
 
                         let lat = parseFloat(data[0].lat);
                         let lng = parseFloat(data[0].lon);
