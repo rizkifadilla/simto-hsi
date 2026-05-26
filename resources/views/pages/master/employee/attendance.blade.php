@@ -33,7 +33,7 @@
                     </div>
                 @endif
                 <button class="btn btn-primary mb-3 float-right" data-toggle="modal" data-target="#manualAttendanceModal">
-                    + Absen Manual
+                    + Manual Absent
                 </button>
 
                 <div class="table-responsive">
@@ -66,11 +66,11 @@
                                     </td>
                                     <td>
                                         @if($row->task == 'sakit')
-                                            <span class="badge badge-warning">Sakit</span>
+                                            <span class="badge badge-warning">Sick</span>
                                         @elseif($row->task == 'izin')
-                                            <span class="badge badge-info">Izin</span>
+                                            <span class="badge badge-info">Permit</span>
                                         @elseif($row->task == 'cuti')
-                                            <span class="badge badge-info">Cuti</span>
+                                            <span class="badge badge-info">Leave</span>
                                         @else
                                             {{ $row->task }}
                                         @endif
@@ -146,24 +146,24 @@
                 @csrf
 
                 <div class="modal-header">
-                    <h5 class="modal-title">Absen Manual</h5>
+                    <h5 class="modal-title">Manual Absent</h5>
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
                 </div>
 
                 <div class="modal-body">
 
                     <div class="form-group">
-                        <label>Tanggal</label>
+                        <label>Date</label>
                         <input type="date" name="date" class="form-control" required>
                     </div>
 
                     <div class="form-group">
-                        <label>Keterangan</label>
+                        <label>Information</label>
                         <select name="type" class="form-control" required>
-                            <option value="">-- Pilih --</option>
-                            <option value="sakit">Sakit</option>
-                            <option value="izin">Izin</option>
-                            <option value="cuti">Cuti</option>
+                            <option value="">-- Choose --</option>
+                            <option value="sakit">Sick</option>
+                            <option value="izin">Permit</option>
+                            <option value="cuti">Leave</option>
                         </select>
                     </div>
 

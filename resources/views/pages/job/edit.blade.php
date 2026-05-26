@@ -12,7 +12,7 @@
     <section class="section">
 
         <div class="section-header">
-            <h1>Edit Lowongan</h1>
+            <h1>Edit Vacancies</h1>
         </div>
 
         <div class="card">

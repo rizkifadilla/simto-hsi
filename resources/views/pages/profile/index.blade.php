@@ -35,7 +35,7 @@
                 <div class="card">
 
                     <div class="card-header">
-                        <h4>Ganti Password</h4>
+                        <h4>Change Password</h4>
                     </div>
 
                     <div class="card-body">
@@ -52,7 +52,7 @@
 
                             {{-- PASSWORD LAMA --}}
                             <div class="form-group">
-                                <label>Password Lama</label>
+                                <label>Old Password</label>
 
                                 <div class="input-group">
                                     <input 
@@ -82,7 +82,7 @@
 
                             {{-- PASSWORD BARU --}}
                             <div class="form-group">
-                                <label>Password Baru</label>
+                                <label>New Password</label>
 
                                 <div class="input-group">
                                     <input 
@@ -112,7 +112,7 @@
 
                             {{-- KONFIRMASI --}}
                             <div class="form-group">
-                                <label>Konfirmasi Password</label>
+                                <label>Confirm Password</label>
 
                                 <div class="input-group">
                                     <input 

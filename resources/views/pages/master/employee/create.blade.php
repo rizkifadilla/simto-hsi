@@ -21,7 +21,7 @@
                                 <!-- LEFT -->
                                 <div class="col-md-6">
 
-                                    <h6>DATA USER</h6>
+                                    <h6>Data User</h6>
 
                                     <div class="form-group">
                                         <label>Email</label>
@@ -50,7 +50,7 @@
 
                                     <hr>
 
-                                    <h6>DATA Employee</h6>
+                                    <h6>Data Employee</h6>
 
                                     <div class="form-group">
                                         <label>Employee ID</label>
@@ -78,7 +78,7 @@
                                     </div>
 
                                     <div class="form-group">
-                                        <label>Absensi Pakai Jarak (GPS)</label>
+                                        <label>Absence Using Distance (GPS)</label>
                                         <div class="custom-control custom-checkbox">
                                             <input type="checkbox"
                                                 name="absent_using_distance"
@@ -87,7 +87,7 @@
                                                 id="absent_using_distance">
                                             <label class="custom-control-label"
                                                 for="absent_using_distance">
-                                                Aktifkan Absensi Berbasis Lokasi
+                                                Enable Location Based Attendance
                                             </label>
                                         </div>
                                     </div>
@@ -157,7 +157,7 @@
 
                             </div>
 
-                            <button class="btn btn-primary">Simpan</button>
+                            <button class="btn btn-primary">Save</button>
 
                         </form>
 

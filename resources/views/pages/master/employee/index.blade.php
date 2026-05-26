@@ -61,18 +61,18 @@
                                                 <th>User ID</th>
                                                 <th>Client</th>
                                                 <th>NIK</th>
-                                                <th>Nama</th>
+                                                <th>Name</th>
                                                 <th>KTP</th>
                                                 <th>Phone</th>
                                                 <th>Email</th>
-                                                <th>Jabatan</th>
-                                                <th>Divisi</th>
-                                                <th>Penempatan</th>
+                                                <th>Position</th>
+                                                <th>Division</th>
+                                                <th>Placement</th>
                                                 <th>Join Date</th>
-                                                <th>Kontrak Mulai</th>
-                                                <th>Kontrak Akhir</th>
-                                                <th>Perpanjangan</th>
-                                                <th>absent_using_distance</th>
+                                                <th>Contract Start</th>
+                                                <th>Contract End</th>
+                                                <th>Extension</th>
+                                                <th>Absent Using Distance</th>
                                                 <th>Status</th>
                                                 <th>Notes</th>
                                                 <th>Action</th>

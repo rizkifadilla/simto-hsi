@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Attendance;
+use App\Models\Employee;
+use App\Models\Client;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -74,7 +76,7 @@ class AttendanceController extends Controller
             $faceDistance = $this->faceDistance($savedDescriptor, $newDescriptor);
 
             if ($faceDistance > 0.45) {
-                return back()->with('error', '❌ Face not match! (' . $faceDistance . ')');
+                return back()->with('error', '❌ Face not match!');
             }
         }
 
@@ -473,6 +475,67 @@ class AttendanceController extends Controller
             'is_face_valid' => false,
         ]);
 
-        return back()->with('success', 'Absen manual berhasil disimpan');
+        return back()->with('success', 'Manual absent saved successfully');
+    }
+
+    public function monitoring(Request $request)
+    {
+        $from = $request->from ?? now()->startOfMonth()->format('Y-m-d');
+        $to   = $request->to ?? now()->endOfMonth()->format('Y-m-d');
+
+        $clientId = $request->client_id;
+        $division = $request->division;
+
+        // =========================
+        // DATE RANGE (ONLY WEEKDAY)
+        // =========================
+        $dates = collect(
+            CarbonPeriod::create($from, $to)
+        )->filter(function ($date) {
+            return !in_array($date->dayOfWeek, [0, 6]); // skip sunday & saturday
+        });
+
+        // =========================
+        // EMPLOYEE QUERY
+        // =========================
+        $employees = Employee::with([
+                'client',
+                'attendances' => function ($q) use ($from, $to) {
+                    $q->whereBetween('date', [$from, $to]);
+                }
+            ])
+
+            ->when($clientId, function ($q) use ($clientId) {
+                $q->where('client_id', $clientId);
+            })
+
+            ->when($division, function ($q) use ($division) {
+                $q->where('division', $division);
+            })
+
+            ->orderBy('full_name')
+            ->get();
+
+        // =========================
+        // FILTER DATA
+        // =========================
+        $clients = Client::orderBy('name')->get();
+
+        $divisions = Employee::select('division')
+            ->whereNotNull('division')
+            ->distinct()
+            ->pluck('division');
+
+        return view('pages.attendance.monitoring', [
+            'employees' => $employees,
+            'dates' => $dates,
+            'from' => $from,
+            'to' => $to,
+            'clients' => $clients,
+            'divisions' => $divisions,
+            'clientId' => $clientId,
+            'division' => $division,
+            'type_menu' => 'attendance-monitoring',
+        ]);
     }
 }

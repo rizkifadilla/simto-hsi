@@ -7,7 +7,7 @@
 <section class="section">
 
 <div class="section-header">
-    <h1>Dashboard Kinerja</h1>
+    <h1>Performance Dashboard</h1>
 </div>
 
 {{-- STAT --}}
@@ -17,7 +17,7 @@
         <div class="card card-statistic-1">
             <div class="card-icon bg-primary"><i class="far fa-user"></i></div>
             <div class="card-wrap">
-                <div class="card-header"><h4>Total Karyawan</h4></div>
+                <div class="card-header"><h4>Total Employees</h4></div>
                 <div class="card-body">{{ $totalEmployee }}</div>
             </div>
         </div>
@@ -27,7 +27,7 @@
         <div class="card card-statistic-1">
             <div class="card-icon bg-success"><i class="fas fa-check"></i></div>
             <div class="card-wrap">
-                <div class="card-header"><h4>Hadir Hari Ini</h4></div>
+                <div class="card-header"><h4>Absent Today</h4></div>
                 <div class="card-body">{{ $presentToday }}</div>
             </div>
         </div>
@@ -37,7 +37,7 @@
         <div class="card card-statistic-1">
             <div class="card-icon bg-danger"><i class="fas fa-times"></i></div>
             <div class="card-wrap">
-                <div class="card-header"><h4>Tidak Hadir</h4></div>
+                <div class="card-header"><h4>Not Present</h4></div>
                 <div class="card-body">{{ $notPresent }}</div>
             </div>
         </div>
@@ -47,8 +47,8 @@
         <div class="card card-statistic-1">
             <div class="card-icon bg-warning"><i class="fas fa-clock"></i></div>
             <div class="card-wrap">
-                <div class="card-header"><h4>Rata Jam Kerja</h4></div>
-                <div class="card-body">{{ $avgWorkHour }} Jam</div>
+                <div class="card-header"><h4>Average Working Hours</h4></div>
+                <div class="card-body">{{ $avgWorkHour }} Hour</div>
             </div>
         </div>
     </div>
@@ -60,7 +60,7 @@
     {{-- CHART KEHADIRAN --}}
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"><h4>Kehadiran 7 Hari</h4></div>
+            <div class="card-header"><h4>7 Day Attendance</h4></div>
             <div class="card-body">
                 <canvas id="lineChart"></canvas>
             </div>
@@ -70,7 +70,7 @@
     {{-- PIE --}}
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"><h4>Perbandingan Kehadiran</h4></div>
+            <div class="card-header"><h4>Attendance Comparison</h4></div>
             <div class="card-body">
                 <canvas id="pieChart"></canvas>
             </div>
@@ -84,7 +84,7 @@
     {{-- AVG CHECK IN --}}
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"><h4>Rata-rata Jam Masuk</h4></div>
+            <div class="card-header"><h4>Average Check In Hours</h4></div>
             <div class="card-body">
                 <canvas id="avgCheckInChart"></canvas>
             </div>
@@ -110,8 +110,8 @@
                             </strong>
 
                             <div class="small text-muted">
-                                Hadir: {{ $r->total_hadir }} |
-                                Tepat waktu: {{ $r->tepat_waktu ?? 0 }}
+                                Present: {{ $r->total_hadir }} |
+                                On time: {{ $r->tepat_waktu ?? 0 }}
                             </div>
                         </div>
 
@@ -133,7 +133,7 @@
 {{-- ACTIVITY --}}
 <div class="card">
     <div class="card-header">
-        <h4>Aktivitas Terbaru</h4>
+        <h4>Recent Activity</h4>
     </div>
     <div class="card-body">
         <ul class="list-unstyled list-unstyled-border">
@@ -202,7 +202,7 @@ new Chart(document.getElementById("avgCheckInChart"), {
     data: {
         labels: {!! json_encode($avgCheckInLabels) !!},
         datasets: [{
-            label: 'Rata-rata Jam Masuk',
+            label: 'Average Check In Hours',
             data: {!! json_encode($avgCheckInData) !!},
             borderColor: '#ffa426',
             backgroundColor: 'rgba(255,164,38,0.2)',

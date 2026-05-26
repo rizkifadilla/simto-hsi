@@ -70,6 +70,9 @@ Route::middleware('auth')->group(function () {
             ->name('clients.index');
         Route::resource('clients', ClientController::class);
 
+        Route::get('/attendance-monitoring', [AttendanceController::class, 'monitoring'])
+            ->name('attendance.monitoring');
+
     });
 
     Route::middleware('role:admin,talent acquisition')->group(function () {

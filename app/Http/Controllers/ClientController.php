@@ -29,7 +29,7 @@ class ClientController extends Controller
         Client::create($request->all());
 
         return redirect()->route('clients.index')
-            ->with('success', 'Client berhasil ditambahkan');
+            ->with('success', 'Client added successfully');
     }
 
     public function edit($id)
@@ -48,13 +48,13 @@ class ClientController extends Controller
         $client->update($request->all());
 
         return redirect()->route('clients.index')
-            ->with('success', 'Client berhasil diupdate');
+            ->with('success', 'The client was successfully updated');
     }
 
     public function destroy($id)
     {
         Client::destroy($id);
 
-        return back()->with('success', 'Client berhasil dihapus');
+        return back()->with('success', 'The client was successfully deleted');
     }
 }

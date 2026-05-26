@@ -48,7 +48,7 @@ class JobController extends Controller
             'is_active' => $request->is_active ? 1 : 0,
         ]);
 
-        return redirect()->route('career.index')->with('success', 'Job berhasil ditambahkan');
+        return redirect()->route('career.index')->with('success', 'Job added successfully');
     }
 
     public function edit($id)
@@ -78,13 +78,13 @@ class JobController extends Controller
             'is_active' => $request->is_active,
         ]);
 
-        return redirect()->route('career.index')->with('success', 'Job berhasil diupdate');
+        return redirect()->route('career.index')->with('success', 'Job updated successfully');
     }
 
     public function destroy($id)
     {
         Job::destroy($id);
-        return back()->with('success', 'Job berhasil dihapus');
+        return back()->with('success', 'Job successfully deleted');
     }
 
     public function applicants($id)

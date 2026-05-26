@@ -6,7 +6,7 @@
 
 <div class="mb-3">
     <a href="{{ route('public.index') }}" class="btn btn-outline-primary btn-sm">
-        ← Kembali ke Lowongan
+        ← Back to Vacancies
     </a>
 </div>
 
@@ -35,7 +35,7 @@
 
                 <hr>
 
-                <h5>Deskripsi</h5>
+                <h5>Description</h5>
                 {!! $job->description !!}
 
                 @if($job->requirement)
@@ -59,7 +59,7 @@
         <div class="card shadow-sm border-0 sticky-top" style="top:20px;">
             <div class="card-body">
 
-                <h5 class="mb-3">Apply Sekarang</h5>
+                <h5 class="mb-3">Apply Now</h5>
 
                 @if(session('success'))
                     <div class="alert alert-success small">{{ session('success') }}</div>
@@ -83,7 +83,7 @@
 
                     <div class="mb-2">
                         <input type="text" name="name" class="form-control form-control-sm"
-                               placeholder="Nama" required>
+                               placeholder="Name" required>
                     </div>
 
                     <div class="mb-2">
@@ -93,31 +93,31 @@
 
                     <div class="mb-2">
                         <input type="text" name="phone" class="form-control form-control-sm"
-                               placeholder="No HP">
+                               placeholder="Phone Number">
                     </div>
 
                     <div class="mb-2">
                         <textarea name="address" class="form-control form-control-sm"
-                                  placeholder="Alamat"></textarea>
+                                  placeholder="Address"></textarea>
                     </div>
 
                     <div class="mb-2">
                         <textarea name="cover_letter" class="form-control form-control-sm"
-                                  placeholder="Cover Letter"></textarea>
+                                placeholder="Cover Letter"></textarea>
                     </div>
 
                     <div class="mb-3">
                         <input type="file" name="cv"
-                               class="form-control form-control-sm" required>
+                            class="form-control form-control-sm" required>
                     </div>
 
                     @if(!$job->is_active)
                         <button class="btn btn-secondary w-100" disabled>
-                            Lowongan Ditutup
+                            Vacancies Closed
                         </button>
                     @else
                         <button class="btn btn-success w-100">
-                            Kirim Lamaran
+                            Submit Application
                         </button>
                     @endif
 

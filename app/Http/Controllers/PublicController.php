@@ -133,7 +133,7 @@ class PublicController extends Controller
             $result['score'] < 0.5 ||
             $result['action'] !== 'submit'
         ) {
-            return back()->with('error', 'Terdeteksi sebagai bot!');
+            return back()->with('error', 'Detected as a bot!');
         }
 
         // ======================
@@ -162,7 +162,7 @@ class PublicController extends Controller
             ->exists();
 
         if ($exists) {
-            return back()->with('error', 'Kamu sudah melamar di lowongan ini');
+            return back()->with('error', 'You have applied for this vacancy');
         }
 
         // ======================
@@ -174,6 +174,6 @@ class PublicController extends Controller
             'cover_letter' => $request->cover_letter,
         ]);
 
-        return back()->with('success', 'Lamaran berhasil dikirim');
+        return back()->with('success', 'Application sent successfully');
     }
 }

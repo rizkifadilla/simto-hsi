@@ -19,7 +19,7 @@
                     class="form-control"
                     placeholder="Cari jabatan atau lokasi..."
                 >
-                <button class="btn btn-primary">Cari</button>
+                <button class="btn btn-primary">Search</button>
             </div>
         </form>
 
@@ -37,7 +37,7 @@
                     Deadline
                 </option>
                 <option value="salary" {{ request('sort') == 'salary' ? 'selected' : '' }}>
-                    Gaji
+                    Salary
                 </option>
             </select>
         </form>
@@ -68,9 +68,9 @@
 
                     <div class="text-end">
                         @if($job->is_active)
-                            <span class="badge-active">Aktif</span>
+                            <span class="badge-active">Active</span>
                         @else
-                            <span class="badge-inactive">Ditutup</span>
+                            <span class="badge-inactive">Closed</span>
                         @endif
 
                         <br><br>
@@ -80,7 +80,7 @@
                             class="btn btn-sm btn-primary"
                             {{ !$job->is_active ? 'disabled' : '' }}
                         >
-                            Lamar
+                            Apply
                         </a>
                     </div>
 
@@ -88,7 +88,7 @@
             </div>
         @empty
             <div class="text-center text-muted">
-                Tidak ada lowongan
+                There are no vacancies
             </div>
         @endforelse
 
@@ -103,7 +103,7 @@
 
             <!-- TYPE -->
             <div class="card mb-3 p-3">
-                <h6>Tipe Pekerjaan</h6>
+                <h6>Job Type</h6>
 
                 @foreach(['fulltime', 'parttime', 'remote', 'contract'] as $type)
                     <div class="form-check">
@@ -134,7 +134,7 @@
                         {{ request('status') == 'active' ? 'checked' : '' }}
                     >
                     <label class="form-check-label">
-                        Aktif saja
+                        Only Active
                     </label>
                 </div>
 
@@ -147,13 +147,13 @@
                         {{ request('status') == null ? 'checked' : '' }}
                     >
                     <label class="form-check-label">
-                        Semua
+                        All
                     </label>
                 </div>
             </div>
 
             <button class="btn btn-primary w-100">
-                Terapkan Filter
+                Apply Filters
             </button>
 
         </form>

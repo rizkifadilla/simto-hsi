@@ -26,7 +26,7 @@
     <section class="section">
 
         <div class="section-header">
-            <h1>Absensi</h1>
+            <h1>Absence</h1>
         </div>
 
         <div class="section-body">
@@ -35,12 +35,12 @@
 
                     {{-- STATUS --}}
                     <div id="statusInfo" class="alert alert-secondary">
-                        Mengecek sistem absensi...
+                        Check the attendance system...
                     </div>
 
                     {{-- DISTANCE --}}
                     <div id="distanceInfo" class="alert alert-secondary">
-                        Mengambil lokasi...
+                        Take location...
                     </div>
 
                     {{-- ALERT --}}
@@ -100,7 +100,7 @@
                                 <canvas id="canvas" style="display:none;"></canvas>
 
                                 <div id="instruction" class="mt-3 text-center font-weight-bold text-primary">
-                                    Siapkan wajah...
+                                    Prepare your face...
                                 </div>
 
                                 <img 
@@ -131,7 +131,7 @@
                         {{-- TASK --}}
                         @if($attendance && $attendance->check_in && !$attendance->check_out)
                             <div class="form-group mt-3 text-left">
-                                <label>Task / Kegiatan Hari Ini</label>
+                                <label>Today's Tasks / Activities</label>
                                 <textarea name="task" class="form-control"></textarea>
                             </div>
                         @endif
@@ -150,7 +150,7 @@
                                 </button>
                             @else
                                 <button type="button" class="btn btn-secondary btn-lg px-5" disabled>
-                                    Sudah Absen
+                                    Has Been Absent
                                 </button>
                             @endif
                         </div>
@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         if (!useDistance) {
             isWithinRadius = true;
-            show("✅ Absensi tanpa lokasi aktif", "success");
+            show("✅ Absence without active location", "success");
             startLiveness();
             return;
         }
@@ -234,16 +234,16 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         if (meter <= radius) {
             isWithinRadius = true;
-            show("✅ Dalam area (" + meter + " meter)", "success");
+            show("✅ Within the area (" + meter + " meters)", "success");
             startLiveness();
         } else {
             isWithinRadius = false;
-            show("❌ Di luar area (" + meter + " meter)", "danger");
+            show("❌ Outside area (" + meter + " meters)", "danger");
             document.getElementById('actionArea').style.display = 'none';
         }
 
     }, function () {
-        show("❌ GPS gagal", "danger");
+        show("❌ GPS failed", "danger");
     });
 
     // ================= LOAD MODEL =================
@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => video.srcObject = stream);
 
-        show("📷 Arahkan wajah ke kamera", "info");
+        show("📷 Turn your face towards the camera", "info");
 
         setInterval(async () => {
 
@@ -269,14 +269,14 @@ document.addEventListener('DOMContentLoaded', async function () {
                 .withFaceLandmarks();
 
             if (!detection) {
-                show("👤 Wajah tidak terdeteksi", "warning");
+                show("👤 Face not detected", "warning");
                 return;
             }
 
             if (!initialized) {
                 targetDirection = randomDirection();
                 initialized = true;
-                show("➡️ Gerakkan kepala ke: <b>" + targetDirection + "</b>", "primary");
+                show("➡️ Move your head to: <b>" + targetDirection + "</b>", "primary");
                 return;
             }
 
@@ -308,9 +308,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                 if (currentDirection === targetDirection) {
                     hasMoved = true;
                     movementPassed = true;
-                    show("✅ Bagus! Kembali ke tengah", "success");
+                    show("✅ Good! Return to center", "success");
                 } else {
-                    show("➡️ Ikuti arah: <b>" + targetDirection + "</b>", "primary");
+                    show("➡️ Follow directions: <b>" + targetDirection + "</b>", "primary");
                 }
                 return;
             }
@@ -332,7 +332,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     .withFaceDescriptor();
 
                 if (!fullDetection) {
-                    show("❌ Gagal ambil wajah", "danger");
+                    show("❌ Failed to take face", "danger");
                     autoCaptured = false;
                     return;
                 }
@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 document.getElementById('photo').value   = data;
                 document.getElementById('preview').src   = data;
 
-                show("✅ Siap absen", "success");
+                show("✅ Ready to be absent", "success");
 
                 document.getElementById('actionArea').style.display = 'block';
             }

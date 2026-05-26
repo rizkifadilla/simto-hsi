@@ -72,13 +72,13 @@
                                     <thead>
                                         <tr>
                                             <th>#</th>
-                                            <th>Tanggal</th>
+                                            <th>Date</th>
                                             <th>Check In</th>
                                             <th>Check Out</th>
-                                            <th>Durasi</th>
-                                            <th>Lokasi</th>
+                                            <th>Deration</th>
+                                            <th>Location</th>
                                             <th>Face</th>
-                                            <th>Kegiatan</th>
+                                            <th>Task</th>
                                         </tr>
                                     </thead>
 
@@ -120,7 +120,7 @@
                                                 @if($row->is_within_radius)
                                                     <span class="badge badge-success">Valid</span>
                                                 @else
-                                                    <span class="badge badge-danger">Diluar</span>
+                                                    <span class="badge badge-danger">Outside</span>
                                                 @endif
                                             </td>
 

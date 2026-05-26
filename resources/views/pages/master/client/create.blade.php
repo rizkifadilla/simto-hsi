@@ -7,7 +7,7 @@
     <section class="section">
 
         <div class="section-header">
-            <h1>Tambah Client</h1>
+            <h1>Add Client</h1>
         </div>
 
         <div class="section-body">
@@ -22,12 +22,12 @@
                             <div class="col-md-6">
 
                                 <div class="form-group">
-                                    <label>Nama Client</label>
+                                    <label>Client Name</label>
                                     <input type="text" name="name" class="form-control" required>
                                 </div>
 
                                 <div class="form-group">
-                                    <label>Alamat</label>
+                                    <label>Address</label>
                                     <textarea name="address" class="form-control"></textarea>
                                 </div>
 
@@ -37,7 +37,7 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <label>No HP</label>
+                                    <label>Phone Number</label>
                                     <input type="text" name="phone" class="form-control">
                                 </div>
 
@@ -60,11 +60,11 @@
 
                             <div class="col-md-6">
 
-                                <label>Cari Lokasi</label>
-                                <input type="text" id="searchLocation" class="form-control mb-2" placeholder="Cari alamat...">
+                                <label>Find Location</label>
+                                <input type="text" id="searchLocation" class="form-control mb-2" placeholder="Find location...">
 
-                                <button type="button" id="btnSearch" class="btn btn-primary mb-2">Cari</button>
-                                <button type="button" id="btnGps" class="btn btn-info mb-2">Gunakan Lokasi Saya</button>
+                                <button type="button" id="btnSearch" class="btn btn-primary mb-2">Find</button>
+                                <button type="button" id="btnGps" class="btn btn-info mb-2">Use My Location</button>
 
                                 <div id="map" style="height: 300px;"></div>
 
@@ -82,7 +82,7 @@
 
                         </div>
 
-                        <button class="btn btn-primary mt-3">Simpan</button>
+                        <button class="btn btn-primary mt-3">Save</button>
 
                     </form>
 

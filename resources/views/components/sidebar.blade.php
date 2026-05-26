@@ -44,6 +44,11 @@
                     </li>
                 </ul>
             </li>
+            <li class="{{ Request::is('attendance-monitoring') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ url('attendance-monitoring') }}"> 
+                    <i class="fas fa-desktop"></i><span>Attendance Monitoring</span>
+                </a>
+            </li>
             @endif
             @if(auth()->user()->role == 'talent acquisition' || auth()->user()->role == 'admin')
             <li class="{{ Request::is('career') ? 'active' : '' }}">

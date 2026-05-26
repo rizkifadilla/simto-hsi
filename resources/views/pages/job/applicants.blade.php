@@ -11,7 +11,7 @@
         <section class="section">
 
             <div class="section-header">
-                <h1>Pelamar - {{ $job->title }}</h1>
+                <h1>Applicants - {{ $job->title }}</h1>
             </div>
 
             <div class="card">
@@ -29,7 +29,7 @@
                             <thead>
                                 <tr>
                                     <th>#</th>
-                                    <th>Nama</th>
+                                    <th>Name</th>
                                     <th>Email</th>
                                     <th>Phone</th>
                                     <th>CV</th>

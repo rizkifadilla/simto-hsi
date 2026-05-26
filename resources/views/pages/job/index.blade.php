@@ -11,14 +11,14 @@
     <section class="section">
 
         <div class="section-header">
-            <h1>Lowongan Kerja</h1>
+            <h1>job vacancy</h1>
         </div>
 
         <div class="card">
             <div class="card-header">
-                <h4>Data Lowongan</h4>
+                <h4>Vacancies Data</h4>
                 <div class="card-header-action">
-                    <a href="{{ route('career.create') }}" class="btn btn-primary">+ Tambah</a>
+                    <a href="{{ route('career.create') }}" class="btn btn-primary">+ Add</a>
                 </div>
             </div>
 
