@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Riwayat Absensi')
+@section('title', 'Absence history')
 
 @push('style')
 <link rel="stylesheet"

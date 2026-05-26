@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Tambah Lowongan')
+@section('title', 'Add Vacancies')
 
 @push('style')
     <link rel="stylesheet" href="{{ asset('library/summernote/dist/summernote-bs4.css') }}">

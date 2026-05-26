@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Lowongan')
+@section('title', 'Vacancy')
 
 @push('style')
     <link rel="stylesheet" href="{{ asset('library/datatables/media/css/jquery.dataTables.min.css') }}">

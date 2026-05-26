@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Tambah Client')
+@section('title', 'Add Client')
 
 @section('main')
 <div class="main-content">

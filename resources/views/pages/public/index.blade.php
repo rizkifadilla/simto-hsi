@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'Lowongan Kerja')
+@section('title', 'Job Vacancy')
 
 @section('content')
 
