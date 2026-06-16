@@ -48,7 +48,6 @@
                                         <input type="text" name="company" class="form-control">
                                     </div>
 
-                                    <hr>
 
                                     <h6>Data Employee</h6>
 

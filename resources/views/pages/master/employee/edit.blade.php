@@ -46,8 +46,6 @@
                                             class="form-control">
                                     </div>
 
-                                    <hr>
-
                                     <h6>Data Employee</h6>
 
                                     <div class="form-group">

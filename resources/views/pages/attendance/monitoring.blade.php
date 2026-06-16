@@ -65,11 +65,16 @@
                 </div>
 
                 <div class="col-md-2 d-flex align-items-end">
-                    <button class="btn btn-primary w-100">
+                    <button class="btn btn-primary w-100 mr-2">
                         <span class="normal-text">
                             Filter
                         </span>
                     </button>
+
+                    <a href="{{ route('attendance.monitoring.export', request()->query()) }}"
+                        class="btn btn-success">
+                            Download
+                    </a>
                 </div>
 
             </form>

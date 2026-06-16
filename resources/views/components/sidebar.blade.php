@@ -49,6 +49,11 @@
                     <i class="fas fa-desktop"></i><span>Attendance Monitoring</span>
                 </a>
             </li>
+            <li class="{{ Request::is('employee-distance-setting') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ url('employee-distance-setting') }}"> 
+                    <i class="fas fa-gear"></i><span>Distance Setting</span>
+                </a>
+            </li>
             @endif
             @if(auth()->user()->role == 'talent acquisition' || auth()->user()->role == 'admin')
             <li class="{{ Request::is('career') ? 'active' : '' }}">

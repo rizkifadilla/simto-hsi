@@ -52,13 +52,22 @@ Route::middleware('auth')->group(function () {
         });
 
         // Master Employee
+        Route::get('/employees/template', [EmployeeController::class, 'downloadTemplate'])
+            ->name('employees.template');
+
+        Route::post('/employees/import', [EmployeeController::class, 'import'])
+            ->name('employees.import');
+        Route::get('/employee-distance-setting', [EmployeeController::class, 'distanceSetting'])
+            ->name('employees.distance-setting');
+        Route::post('/employee-distance-setting', [EmployeeController::class, 'updateDistanceSetting'])
+            ->name('employees.distance-setting.update');
         Route::get('/master-employee', [EmployeeController::class, 'index'])
             ->name('employees.index');
-        Route::resource('employees', EmployeeController::class);
         Route::post('/employees/{id}/reset-face', [EmployeeController::class, 'resetFace'])
             ->name('employees.reset-face');
         Route::get('employees/{id}/attendance', [EmployeeController::class, 'attendance'])
             ->name('employees.attendance');
+        Route::resource('employees', EmployeeController::class)->except(['show']);
 
         Route::post('attendance/{id}/update-time', [EmployeeController::class, 'updateAttendanceTime'])
             ->name('attendance.updateTime');
@@ -72,6 +81,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/attendance-monitoring', [AttendanceController::class, 'monitoring'])
             ->name('attendance.monitoring');
+        Route::get('/attendance-monitoring/export', [AttendanceController::class, 'exportMonitoring'])
+            ->name('attendance.monitoring.export');
 
     });
 

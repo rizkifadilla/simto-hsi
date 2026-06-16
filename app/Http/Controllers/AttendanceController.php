@@ -337,14 +337,15 @@ class AttendanceController extends Controller
         }
 
         $companyName    = config('app.company_name', 'PT. Hermes Solusi Integrasi');
-        $companyAddress = config('app.company_address', 'Jl. Contoh No.1, Jakarta');
+        $companyAddress = config('app.company_address', '88@Kasablanka Office Tower, Lantai 3, Unit A Jl. Kasablanka Kav. 88, DKI Jakarta, 12870');
         $employeeName   = e($employee->full_name ?? '-');
         $employeeRole   = e($employee->position  ?? '-');
 
         return <<<HTML
         <html xmlns:o="urn:schemas-microsoft-com:office:office"
-              xmlns:x="urn:schemas-microsoft-com:office:excel"
-              xmlns="http://www.w3.org/TR/REC-html40">
+            xmlns:x="urn:schemas-microsoft-com:office:excel"
+            xmlns:v="urn:schemas-microsoft-com:vml"
+            xmlns="http://www.w3.org/TR/REC-html40">
         <head>
             <meta charset="UTF-8"/>
             <!--[if gte mso 9]>
@@ -401,8 +402,6 @@ class AttendanceController extends Controller
 
             <!-- Logo + Perusahaan -->
             <tr class="nb">
-                <td rowspan="2" style="width:50px;text-align:center;font-weight:bold;
-                    color:#1F4E79;font-size:11pt;border:none;">[LOGO]</td>
                 <td colspan="5" class="company-name">{$companyName}</td>
             </tr>
             <tr class="nb">
@@ -537,5 +536,205 @@ class AttendanceController extends Controller
             'division' => $division,
             'type_menu' => 'attendance-monitoring',
         ]);
+    }
+
+    public function exportMonitoring(Request $request)
+    {
+        $from = $request->from ?? now()->startOfMonth()->format('Y-m-d');
+        $to   = $request->to ?? now()->endOfMonth()->format('Y-m-d');
+
+        $clientId = $request->client_id;
+        $division = $request->division;
+
+        $dates = collect(
+            CarbonPeriod::create($from, $to)
+        )->filter(function ($date) {
+            return !in_array($date->dayOfWeek, [0, 6]);
+        });
+
+        $employees = Employee::with([
+                'client',
+                'attendances' => function ($q) use ($from, $to) {
+                    $q->whereBetween('date', [$from, $to]);
+                }
+            ])
+            ->when($clientId, function ($q) use ($clientId) {
+                $q->where('client_id', $clientId);
+            })
+            ->when($division, function ($q) use ($division) {
+                $q->where('division', $division);
+            })
+            ->orderBy('full_name')
+            ->get();
+
+        $html = $this->buildMonitoringHtml(
+            $employees,
+            $dates,
+            $from,
+            $to
+        );
+
+        $filename = 'attendance_monitoring_' .
+            now()->format('YmdHis') . '.xls';
+
+        return response($html)
+            ->header(
+                'Content-Type',
+                'application/vnd.ms-excel; charset=UTF-8'
+            )
+            ->header(
+                'Content-Disposition',
+                "attachment; filename=\"{$filename}\""
+            );
+    }
+
+    private function buildMonitoringHtml(
+        $employees,
+        $dates,
+        string $from,
+        string $to
+    ): string {
+
+        $headers = '';
+
+        foreach ($dates as $date) {
+            $headers .= '
+                <th style="min-width:80px;">
+                    ' . $date->format('d') . '<br>
+                    ' . $date->translatedFormat('D') . '
+                </th>';
+        }
+
+        $rows = '';
+
+        foreach ($employees as $employee) {
+
+            $row = '
+                <tr>
+                    <td style="white-space: nowrap;">
+                        <strong>' . e($employee->full_name) . '</strong><br>
+                        <small>' . e($employee->division) . '</small>
+                    </td>';
+
+            foreach ($dates as $date) {
+
+                $attendance = $employee->attendances
+                    ->where('date', $date->format('Y-m-d'))
+                    ->first();
+
+                $bg = '#FFFFFF';
+                $value = '-';
+
+                if (!$attendance) {
+                    $bg = '#F4CCCC';
+                    $value = '❌';
+                } elseif ($attendance->task == 'izin') {
+                    $bg = '#D9EAD3';
+                    $value = 'Permit';
+                } elseif ($attendance->task == 'cuti') {
+                    $bg = '#D9EAD3';
+                    $value = 'Leave';
+                } elseif ($attendance->task == 'sakit') {
+                    $bg = '#FFF2CC';
+                    $value = 'Sick';
+                } elseif ($attendance->check_in) {
+                    $bg = '#B6D7A8';
+                    $value = '✅';
+                }
+
+                $row .= '
+                    <td style="
+                        background:' . $bg . ';
+                        text-align:center;
+                        vertical-align:middle;
+                    ">
+                        ' . $value . '
+                    </td>';
+            }
+
+            $row .= '</tr>';
+
+            $rows .= $row;
+        }
+
+        $periode = Carbon::parse($from)->format('d M Y')
+            . ' - ' .
+            Carbon::parse($to)->format('d M Y');
+
+        $totalCol = $dates->count() + 1;
+
+        return <<<HTML
+            <html xmlns:o="urn:schemas-microsoft-com:office:office"
+                xmlns:x="urn:schemas-microsoft-com:office:excel"
+                xmlns:v="urn:schemas-microsoft-com:vml"
+                xmlns="http://www.w3.org/TR/REC-html40">
+
+            <head>
+            <meta charset="UTF-8"/>
+
+            <style>
+            body, table, td, th {
+                font-family: Arial, sans-serif;
+                font-size: 10pt;
+            }
+
+            table {
+                border-collapse: collapse;
+            }
+
+            th, td {
+                border: 1px solid #BFBFBF;
+                padding: 5px;
+            }
+
+            .title {
+                background: #1F4E79;
+                color: white;
+                font-size: 14pt;
+                font-weight: bold;
+                text-align: center;
+            }
+
+            .header {
+                background: #1F4E79;
+                color: white;
+                font-weight: bold;
+                text-align: center;
+            }
+            </style>
+            </head>
+
+            <body>
+
+            <table>
+
+            <tr>
+                <td colspan="{$totalCol}" class="title">
+                    Attendance Monitoring
+                </td>
+            </tr>
+
+            <tr>
+                <td colspan="{$totalCol}">
+                    Period: {$periode}
+                </td>
+            </tr>
+
+            <tr>
+                <td colspan="{$totalCol}">&nbsp;</td>
+            </tr>
+
+            <tr class="header">
+                <th style="min-width:220px;">Employee</th>
+                {$headers}
+            </tr>
+
+            {$rows}
+
+            </table>
+
+            </body>
+            </html>
+            HTML;
     }
 }

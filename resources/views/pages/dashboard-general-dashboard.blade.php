@@ -171,7 +171,7 @@ new Chart(document.getElementById("lineChart"), {
     data: {
         labels: {!! json_encode($labels) !!},
         datasets: [{
-            label: 'Hadir',
+            label: 'Present',
             data: {!! json_encode($data) !!},
             borderColor: '#6777ef',
             backgroundColor: 'rgba(103,119,239,0.2)',
@@ -185,7 +185,7 @@ new Chart(document.getElementById("lineChart"), {
 new Chart(document.getElementById("pieChart"), {
     type: 'pie',
     data: {
-        labels: ['Hadir', 'Tidak Hadir'],
+        labels: ['Present', 'Absent'],
         datasets: [{
             data: [
                 {{ $attendanceSummary['hadir'] }},

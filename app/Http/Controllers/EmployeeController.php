@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\Employee;
 use App\Models\User;
 use App\Models\Client;
@@ -186,5 +188,209 @@ class EmployeeController extends Controller
         ]);
 
         return back()->with('success', 'Attendance updated!');
+    }
+
+    public function distanceSetting(Request $request)
+    {
+        $clientId = $request->client_id;
+        $division = $request->division;
+
+        $employees = Employee::with('client')
+            ->when($clientId, function ($q) use ($clientId) {
+                $q->where('client_id', $clientId);
+            })
+            ->when($division, function ($q) use ($division) {
+                $q->where('division', $division);
+            })
+            ->orderBy('full_name')
+            ->get();
+
+        $clients = Client::orderBy('name')->get();
+
+        $divisions = Employee::select('division')
+            ->whereNotNull('division')
+            ->distinct()
+            ->pluck('division');
+
+        return view('pages.master.employee.distance-setting', [
+            'employees' => $employees,
+            'clients' => $clients,
+            'divisions' => $divisions,
+            'clientId' => $clientId,
+            'division' => $division,
+            'type_menu' => 'distance-setting',
+        ]);
+    }
+
+    public function updateDistanceSetting(Request $request)
+    {
+        $employeeIds = $request->employee_ids ?? [];
+
+        Employee::query()
+            ->when($request->client_id, function ($q) use ($request) {
+                $q->where('client_id', $request->client_id);
+            })
+            ->when($request->division, function ($q) use ($request) {
+                $q->where('division', $request->division);
+            })
+            ->update([
+                'absent_using_distance' => false
+            ]);
+
+        if (!empty($employeeIds)) {
+            Employee::whereIn('id', $employeeIds)
+                ->update([
+                    'absent_using_distance' => true
+                ]);
+        }
+
+        return back()->with(
+            'success',
+            'Distance setting updated successfully.'
+        );
+    }
+    public function downloadTemplate()
+    {
+        $headers = [
+            'employee_id',
+            'full_name',
+            'email',
+            'password',
+            'role',
+            'company',
+            'nik_ktp',
+            'phone',
+            'client_id',
+            'position',
+            'division',
+            'placement',
+            'join_date',
+            'contract_start',
+            'contract_end',
+            'contract_extension_count',
+            'status',
+            'absent_using_distance',
+            'notes'
+        ];
+
+        $filename = 'employee_template.csv';
+
+        $callback = function () use ($headers) {
+            $file = fopen('php://output', 'w');
+
+            fputcsv($file, $headers);
+
+            // contoh data
+            fputcsv($file, [
+                'EMP001',
+                'John Doe',
+                'john@example.com',
+                'password',
+                'employee',
+                'PT ABC',
+                '123456789',
+                '08123456789',
+                1,
+                'Programmer',
+                'IT',
+                'Jakarta',
+                '2026-01-01',
+                '2026-01-01',
+                '2026-12-31',
+                0,
+                'active',
+                1,
+                'Example note'
+            ]);
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename=' . $filename,
+        ]);
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:csv,txt',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+
+            $file = fopen(
+                $request->file('file')->getRealPath(),
+                'r'
+            );
+
+            // Skip header
+            fgetcsv($file);
+
+            $inserted = 0;
+
+            while (($row = fgetcsv($file)) !== false) {
+
+                if (count($row) < 19) {
+                    continue;
+                }
+
+                $user = User::create([
+                    'name' => $row[1],
+                    'email' => $row[2],
+                    'password' => bcrypt($row[3] ?: 'password'),
+                    'role' => $row[4] ?: 'employee',
+                    'employee_id' => $row[0],
+                    'company' => $row[5],
+                    'is_active' => true,
+                ]);
+
+                Employee::create([
+                    'user_id' => $user->id,
+                    'client_id' => $row[8],
+                    'employee_id' => $row[0],
+                    'full_name' => $row[1],
+                    'nik_ktp' => $row[6],
+                    'phone' => $row[7],
+                    'email' => $row[2],
+                    'position' => $row[9],
+                    'division' => $row[10],
+                    'placement' => $row[11],
+                    'join_date' => $row[12],
+                    'contract_start' => $row[13],
+                    'contract_end' => $row[14],
+                    'contract_extension_count' => $row[15] ?: 0,
+                    'status' => $row[16] ?: 'active',
+                    'absent_using_distance' => (bool) $row[17],
+                    'notes' => $row[18],
+                ]);
+
+                $inserted++;
+            }
+
+            fclose($file);
+
+            DB::commit();
+
+            return back()->with(
+                'success',
+                "{$inserted} employee imported successfully."
+            );
+
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            Log::error($e);
+
+            return back()->with(
+                'error',
+                // $e->getMessage()
+                'An error occurred while importing. Please check the file format and try again.'
+            );
+        }
     }
 }
