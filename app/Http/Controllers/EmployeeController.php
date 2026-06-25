@@ -48,11 +48,9 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            // USER
             'email' => 'required|email|unique:users,email',
             'password' => 'nullable|min:6',
 
-            // EMPLOYEE
             'employee_id' => 'required|unique:employees,employee_id',
             'full_name' => 'required',
             'nik_ktp' => 'required|unique:employees,nik_ktp',
@@ -63,67 +61,94 @@ class EmployeeController extends Controller
             'contract_end' => 'required|date|after:contract_start',
         ]);
 
-        // 🔥 CREATE USER
-        $user = User::create([
-            'name' => $request->full_name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password ?? 'password'),
-            'role' => $request->role ?? 'employee',
-            'employee_id' => $request->employee_id,
-            'company' => $request->company,
-            'is_active' => true
-        ]);
+        try {
+            $user = User::create([
+                'name' => $request->full_name,
+                'email' => $request->email,
+                'password' => bcrypt($request->password ?? 'password'),
+                'role' => $request->role ?? 'employee',
+                'employee_id' => $request->employee_id,
+                'company' => $request->company,
+                'is_active' => true
+            ]);
 
-        // 🔥 CREATE EMPLOYEE
-        Employee::create([
-            'user_id' => $user->id,
-            'client_id' => $request->client_id,
-            'employee_id' => $request->employee_id,
-            'full_name' => $request->full_name,
-            'nik_ktp' => $request->nik_ktp,
-            'phone' => $request->phone,
-            'email' => $request->email,
-            'position' => $request->position,
-            'division' => $request->division,
-            'placement' => $request->placement,
-            'join_date' => $request->join_date,
-            'contract_start' => $request->contract_start,
-            'contract_end' => $request->contract_end,
-            'contract_extension_count' => $request->contract_extension_count ?? 0,
-            'status' => $request->status ?? 'active',
-            'absent_using_distance' => $request->has('absent_using_distance'),
-            'notes' => $request->notes,
-        ]);
+            Employee::create([
+                'user_id' => $user->id,
+                'client_id' => $request->client_id,
+                'employee_id' => $request->employee_id,
+                'full_name' => $request->full_name,
+                'nik_ktp' => $request->nik_ktp,
+                'phone' => $request->phone,
+                'email' => $request->email,
+                'position' => $request->position,
+                'division' => $request->division,
+                'placement' => $request->placement,
+                'join_date' => $request->join_date,
+                'contract_start' => $request->contract_start,
+                'contract_end' => $request->contract_end,
+                'contract_extension_count' => $request->contract_extension_count ?? 0,
+                'status' => $request->status ?? 'active',
+                'absent_using_distance' => $request->has('absent_using_distance'),
+                'notes' => $request->notes,
+            ]);
 
-        return redirect()->route('employees.index')->with('success', 'Employee successfully created');
+            return redirect()
+                ->route('employees.index')
+                ->with('success', 'Employee successfully created');
+
+        } catch (\Exception $e) {
+
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
     }
 
     public function update(Request $request, $id)
     {
+        
+
         $employee = Employee::findOrFail($id);
         $user = User::findOrFail($employee->user_id);
 
         $request->validate([
-            'email' => 'required|email|unique:users,email,' . $user->id,
             'employee_id' => 'required|unique:employees,employee_id,' . $employee->id,
+            'full_name' => 'required',
             'nik_ktp' => 'required|unique:employees,nik_ktp,' . $employee->id,
+            'phone' => 'required',
+            'client_id' => 'required',
+            'join_date' => 'required|date',
+            'contract_start' => 'required|date',
+            'contract_end' => 'required|date|after:contract_start',
+            'position' => 'required',
+            'division' => 'required',
+            'placement' => 'required',
+            'status' => 'required',
+            'role' => 'required',
         ]);
+        try {
+            // update user
+            $user->update([
+                'name' => $request->full_name,
+                'role' => $request->role,
+            ]);
 
-        // update user
-        $user->update([
-            'name' => $request->full_name,
-            'email' => $request->email,
-            'role' => $request->role,
-            'company' => $request->company,
-        ]);
+            // update employee
+            $data = $request->all();
+            $data['absent_using_distance'] = $request->has('absent_using_distance');
 
-        // update employee
-        $data = $request->all();
-        $data['absent_using_distance'] = $request->has('absent_using_distance');
+            $employee->update($data);
 
-        $employee->update($data);
+            return redirect()
+                ->route('employees.index')
+                ->with('success', 'Updated successfully');
 
-        return redirect()->route('employees.index')->with('success', 'Updated successfully');
+        } catch (\Exception $e) {
+
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
     }
 
     public function destroy($id)
@@ -291,9 +316,9 @@ class EmployeeController extends Controller
                 '123456789',
                 '08123456789',
                 1,
-                'Programmer',
-                'IT',
-                'Jakarta',
+                'Staff',
+                'HRD',
+                'HO',
                 '2026-01-01',
                 '2026-01-01',
                 '2026-12-31',

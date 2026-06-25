@@ -31,10 +31,11 @@
             border-radius: 10px;
             padding: 15px;
             margin-bottom: 10px;
+            transition: .2s;
         }
 
         .job-card:hover {
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+            box-shadow: 0 4px 16px rgba(0,0,0,.07);
         }
 
         .badge-active {
@@ -55,14 +56,13 @@
             background: #fff;
             border-top: 1px solid #e5e7eb;
             padding: 20px 0;
-            margin-top: 40px;
         }
     </style>
 </head>
 
-<body>
+<body class="d-flex flex-column min-vh-100">
 
-    <!-- ===== HEADER ===== -->
+    <!-- HEADER -->
     <header class="site-header">
         <nav class="navbar navbar-expand-lg py-2">
             <div class="container-lg">
@@ -70,14 +70,22 @@
                     HSI<span>Career</span>
                 </a>
 
-                <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#nav">
+                <button
+                    class="navbar-toggler"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#nav"
+                >
                     <i class="bi bi-list"></i>
                 </button>
 
                 <div class="collapse navbar-collapse" id="nav">
                     <ul class="navbar-nav ms-4 me-auto">
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ route('career.index') }}">
+                            <a
+                                class="nav-link"
+                                href="{{ route('career.index') }}"
+                            >
                                 Vacancy
                             </a>
                         </li>
@@ -87,19 +95,25 @@
         </nav>
     </header>
 
-    <!-- ===== CONTENT ===== -->
-    <div class="container-lg py-4">
-        @yield('content')
-    </div>
+    <!-- CONTENT -->
+    <main class="flex-grow-1">
+        <div class="container-lg py-4">
+            @yield('content')
+        </div>
+    </main>
 
-    <!-- ===== FOOTER ===== -->
+    <!-- FOOTER -->
     <footer class="site-footer">
-        <div class="container-lg d-flex justify-content-between">
+        <div class="container-lg d-flex justify-content-between align-items-center">
+
             <div>
                 <strong>
                     HSI<span style="color:#1d4ed8;">Career</span>
-                </strong><br>
-                <small class="text-muted">© 2025 Career Portal</small>
+                </strong>
+                <br>
+                <small class="text-muted">
+                    © {{ date('Y') }} Career Portal
+                </small>
             </div>
 
         </div>

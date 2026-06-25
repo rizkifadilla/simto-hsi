@@ -31,24 +31,44 @@ class JobController extends Controller
     {
         $request->validate([
             'title' => 'required',
-            'description' => 'required'
+            'description' => 'required',
+            'requirement' => 'required',
+            'benefit' => 'required',
+            'location' => 'required',
+            'type' => 'required',
+            'salary_min' => 'required|numeric',
+            'salary_max' => 'required|numeric|gte:salary_min',
+            'deadline' => 'required|date',
         ]);
+        try {
 
-        Job::create([
-            'title' => $request->title,
-            'slug' => Str::slug($request->title) . '-' . time(),
-            'description' => $request->description,
-            'requirement' => $request->requirement,
-            'benefit' => $request->benefit,
-            'location' => $request->location,
-            'type' => $request->type,
-            'salary_min' => $request->salary_min,
-            'salary_max' => $request->salary_max,
-            'deadline' => $request->deadline,
-            'is_active' => $request->is_active ? 1 : 0,
-        ]);
+            Job::create([
+                'title' => $request->title,
+                'slug' => Str::slug($request->title) . '-' . time(),
+                'description' => $request->description,
+                'requirement' => $request->requirement,
+                'benefit' => $request->benefit,
+                'location' => $request->location,
+                'type' => $request->type,
+                'salary_min' => $request->salary_min,
+                'salary_max' => $request->salary_max,
+                'deadline' => $request->deadline,
+                'is_active' => $request->is_active ? 1 : 0,
+            ]);
 
-        return redirect()->route('career.index')->with('success', 'Job added successfully');
+            return redirect()->route('career.index')->with('success', 'Job added successfully');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+
+            return back()
+                ->withInput()
+                ->with('error', implode('<br>', $e->validator->errors()->all()));
+
+        } catch (\Exception $e) {
+
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
     }
 
     public function edit($id)
@@ -63,22 +83,49 @@ class JobController extends Controller
 
     public function update(Request $request, $id)
     {
-        $job = Job::findOrFail($id);
-
-        $job->update([
-            'title' => $request->title,
-            'description' => $request->description,
-            'requirement' => $request->requirement,
-            'benefit' => $request->benefit,
-            'location' => $request->location,
-            'type' => $request->type,
-            'salary_min' => $request->salary_min,
-            'salary_max' => $request->salary_max,
-            'deadline' => $request->deadline,
-            'is_active' => $request->is_active,
+        $request->merge([
+            'description' => trim(strip_tags($request->description)),
+            'requirement' => trim(strip_tags($request->requirement)),
+            'benefit' => trim(strip_tags($request->benefit)),
         ]);
+        $request->validate([
+            'title' => 'required',
+            'location' => 'required',
+            'type' => 'required',
+            'description' => 'required',
+            'requirement' => 'required',
+            'benefit' => 'required',
+            'salary_min' => 'required|numeric',
+            'salary_max' => 'required|numeric|gte:salary_min',
+            'deadline' => 'required|date',
+            'is_active' => 'required',
+        ]);
+        try {
+            $job = Job::findOrFail($id);
 
-        return redirect()->route('career.index')->with('success', 'Job updated successfully');
+            $job->update([
+                'title' => $request->title,
+                'description' => $request->description,
+                'requirement' => $request->requirement,
+                'benefit' => $request->benefit,
+                'location' => $request->location,
+                'type' => $request->type,
+                'salary_min' => $request->salary_min,
+                'salary_max' => $request->salary_max,
+                'deadline' => $request->deadline,
+                'is_active' => $request->has('is_active'),
+            ]);
+
+            return redirect()
+                ->route('career.index')
+                ->with('success', 'Job updated successfully');
+
+        } catch (\Exception $e) {
+
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
     }
 
     public function destroy($id)
