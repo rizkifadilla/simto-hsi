@@ -89,7 +89,15 @@
 
                                     <div class="form-group">
                                         <label>Phone</label>
-                                        <input type="text" name="phone" value="{{ $employee->phone }}" class="form-control">
+                                        <input
+                                            type="text"
+                                            name="phone"
+                                            class="form-control"
+                                            value="{{ $employee->phone }}"
+                                            inputmode="numeric"
+                                            pattern="[0-9]*"
+                                            maxlength="15"
+                                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                                     </div>
 
                                     <!-- <div class="form-group">

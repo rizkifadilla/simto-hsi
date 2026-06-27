@@ -55,12 +55,6 @@
                                     </div>
 
                                     <div class="form-group">
-                                        <label>Password</label>
-                                        <input type="password" name="password" class="form-control">
-                                        <small>Default: password</small>
-                                    </div>
-
-                                    <div class="form-group">
                                         <label>Role</label>
                                         <select name="role" class="form-control">
                                             <option value="employee"
@@ -124,7 +118,11 @@
                                             type="text"
                                             name="phone"
                                             class="form-control"
-                                            value="{{ old('phone') }}">
+                                            value="{{ old('phone') }}"
+                                            inputmode="numeric"
+                                            pattern="[0-9]*"
+                                            maxlength="15"
+                                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                                     </div>
 
                                     <!-- <div class="form-group">

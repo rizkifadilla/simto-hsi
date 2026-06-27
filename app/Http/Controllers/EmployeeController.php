@@ -49,12 +49,10 @@ class EmployeeController extends Controller
     {
         $request->validate([
             'email' => 'required|email|unique:users,email',
-            'password' => 'nullable|min:6',
-
             'employee_id' => 'required|unique:employees,employee_id',
             'full_name' => 'required',
             'nik_ktp' => 'required|unique:employees,nik_ktp',
-            'phone' => 'required',
+            'phone' => ['required', 'digits_between:10,15'],
             'client_id' => 'required',
             'join_date' => 'required|date',
             'contract_start' => 'required|date',
@@ -65,7 +63,7 @@ class EmployeeController extends Controller
             $user = User::create([
                 'name' => $request->full_name,
                 'email' => $request->email,
-                'password' => bcrypt($request->password ?? 'password'),
+                'password' => bcrypt('password'),
                 'role' => $request->role ?? 'employee',
                 'employee_id' => $request->employee_id,
                 'company' => $request->company,
@@ -115,7 +113,7 @@ class EmployeeController extends Controller
             'employee_id' => 'required|unique:employees,employee_id,' . $employee->id,
             'full_name' => 'required',
             'nik_ktp' => 'required|unique:employees,nik_ktp,' . $employee->id,
-            'phone' => 'required',
+            'phone' => ['required', 'digits_between:10,15'],
             'client_id' => 'required',
             'join_date' => 'required|date',
             'contract_start' => 'required|date',
@@ -280,9 +278,7 @@ class EmployeeController extends Controller
             'employee_id',
             'full_name',
             'email',
-            'password',
             'role',
-            'company',
             'nik_ktp',
             'phone',
             'client_id',
@@ -310,9 +306,7 @@ class EmployeeController extends Controller
                 'EMP001',
                 'John Doe',
                 'john@example.com',
-                'password',
                 'employee',
-                'PT ABC',
                 '123456789',
                 '08123456789',
                 1,
@@ -338,84 +332,128 @@ class EmployeeController extends Controller
     }
 
     public function import(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|mimes:csv,txt',
-        ]);
+{
+    $request->validate([
+        'file' => 'required|mimes:csv,txt',
+    ]);
 
-        DB::beginTransaction();
+    DB::beginTransaction();
 
-        try {
+    try {
 
-            $file = fopen(
-                $request->file('file')->getRealPath(),
-                'r'
-            );
+        $file = fopen(
+            $request->file('file')->getRealPath(),
+            'r'
+        );
 
-            // Skip header
-            fgetcsv($file);
+        // Skip header
+        fgetcsv($file);
 
-            $inserted = 0;
+        $inserted = 0;
+        $line = 2; // karena header di baris 1
 
-            while (($row = fgetcsv($file)) !== false) {
+        while (($row = fgetcsv($file)) !== false) {
 
-                if (count($row) < 19) {
-                    continue;
-                }
-
-                $user = User::create([
-                    'name' => $row[1],
-                    'email' => $row[2],
-                    'password' => bcrypt($row[3] ?: 'password'),
-                    'role' => $row[4] ?: 'employee',
-                    'employee_id' => $row[0],
-                    'company' => $row[5],
-                    'is_active' => true,
-                ]);
-
-                Employee::create([
-                    'user_id' => $user->id,
-                    'client_id' => $row[8],
-                    'employee_id' => $row[0],
-                    'full_name' => $row[1],
-                    'nik_ktp' => $row[6],
-                    'phone' => $row[7],
-                    'email' => $row[2],
-                    'position' => $row[9],
-                    'division' => $row[10],
-                    'placement' => $row[11],
-                    'join_date' => $row[12],
-                    'contract_start' => $row[13],
-                    'contract_end' => $row[14],
-                    'contract_extension_count' => $row[15] ?: 0,
-                    'status' => $row[16] ?: 'active',
-                    'absent_using_distance' => (bool) $row[17],
-                    'notes' => $row[18],
-                ]);
-
-                $inserted++;
+            if (count($row) < 17) {
+                throw new \Exception(
+                    "Invalid CSV format on row {$line}. Expected 17 columns, found " . count($row) . "."
+                );
             }
 
-            fclose($file);
+            // Validasi data kosong
+            if (
+                empty($row[0]) ||
+                empty($row[1]) ||
+                empty($row[2]) ||
+                empty($row[4]) ||
+                empty($row[5])
+            ) {
+                throw new \Exception(
+                    "Required data is missing on row {$line}."
+                );
+            }
 
-            DB::commit();
+            // Duplicate email
+            if (User::where('email', $row[2])->exists()) {
+                throw new \Exception(
+                    "Duplicate email '{$row[2]}' found on row {$line}."
+                );
+            }
 
-            return back()->with(
-                'success',
-                "{$inserted} employee imported successfully."
-            );
+            // Duplicate employee id
+            if (Employee::where('employee_id', $row[0])->exists()) {
+                throw new \Exception(
+                    "Employee ID '{$row[0]}' already exists on row {$line}."
+                );
+            }
 
-        } catch (\Exception $e) {
+            // Duplicate NIK
+            if (Employee::where('nik_ktp', $row[4])->exists()) {
+                throw new \Exception(
+                    "NIK '{$row[4]}' already exists on row {$line}."
+                );
+            }
 
-            DB::rollBack();
+            // Client tidak ada
+            if (!Client::find($row[6])) {
+                throw new \Exception(
+                    "Client ID '{$row[6]}' not found on row {$line}."
+                );
+            }
 
-            Log::error($e);
+            $user = User::create([
+                'name' => $row[1],
+                'email' => $row[2],
+                'password' => bcrypt('password'),
+                'role' => $row[3] ?: 'employee',
+                'employee_id' => $row[0],
+                'company' => '-',
+                'is_active' => true,
+            ]);
 
-            return back()->with(
-                'error',
-                // $e->getMessage()
-                'An error occurred while importing. Please check the file format and try again.'
-            );
+            Employee::create([
+                'user_id' => $user->id,
+                'client_id' => $row[6],
+                'employee_id' => $row[0],
+                'full_name' => $row[1],
+                'nik_ktp' => $row[4],
+                'phone' => $row[5],
+                'email' => $row[2],
+                'position' => $row[7],
+                'division' => $row[8],
+                'placement' => $row[9],
+                'join_date' => $row[10],
+                'contract_start' => $row[11],
+                'contract_end' => $row[12],
+                'contract_extension_count' => $row[13] ?: 0,
+                'status' => $row[14] ?: 'active',
+                'absent_using_distance' => (bool) $row[15],
+                'notes' => $row[16],
+            ]);
+
+            $inserted++;
+            $line++;
         }
+
+        fclose($file);
+
+        DB::commit();
+
+        return back()->with(
+            'success',
+            "{$inserted} employee imported successfully."
+        );
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        Log::error($e);
+
+        return back()->withInput()->with(
+            'error',
+            $e->getMessage()
+        );
     }
+}
 }
