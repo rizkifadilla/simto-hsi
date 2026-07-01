@@ -21,8 +21,8 @@ class EmployeeImportTest extends TestCase
         $client = Client::factory()->create();
 
         $csvContent =
-            "employee_id,full_name,email,password,role,company,nik_ktp,phone,client_id,position,division,placement,join_date,contract_start,contract_end,contract_extension_count,status,absent_using_distance,notes\n" .
-            "EMP999,Import User,import@test.com,password,employee,PT Demo,123456789,08123456789,{$client->id},Programmer,IT,Jakarta,2026-01-01,2026-01-01,2026-12-31,0,active,1,Imported";
+            "employee_id,full_name,email,role,nik_ktp,phone,client_id,position,division,placement,join_date,contract_start,contract_end,contract_extension_count,status,absent_using_distance,notes\n" .
+            "EMP999,Import User,import@test.com,employee,123456789,08123456789,{$client->id},Programmer,IT,Jakarta,2026-01-01,2026-01-01,2026-12-31,0,active,1,Imported";
 
         $file = UploadedFile::fake()->createWithContent(
             'employee.csv',
@@ -42,7 +42,8 @@ class EmployeeImportTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('employees', [
-            'employee_id' => 'EMP999'
+            'employee_id' => 'EMP999',
+            'email' => 'import@test.com'
         ]);
     }
 }

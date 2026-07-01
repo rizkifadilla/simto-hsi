@@ -122,6 +122,16 @@ class PublicController extends Controller
                 'remoteip' => $request->ip(),
             ]
         );
+        // $response = Http::withoutVerifying()
+        //     ->asForm()
+        //     ->post(
+        //         'https://www.google.com/recaptcha/api/siteverify',
+        //         [
+        //             'secret' => config('services.recaptcha.secret_key'),
+        //             'response' => $request->input('g-recaptcha-response'),
+        //             'remoteip' => $request->ip(),
+        //         ]
+        //     );
 
         $result = $response->json();
 

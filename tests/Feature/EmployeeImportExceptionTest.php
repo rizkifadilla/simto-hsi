@@ -32,6 +32,7 @@ class EmployeeImportExceptionTest extends TestCase
                 'file' => $file
             ]);
 
-        $response->assertSessionHas('success');
+        $response->assertRedirect();
+        $response->assertSessionHas('error');
     }
 }

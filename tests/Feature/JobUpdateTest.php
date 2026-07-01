@@ -23,14 +23,23 @@ class JobUpdateTest extends TestCase
             ->actingAs($user)
             ->put(route('career.update', $job->id), [
                 'title' => 'Updated Job',
-                'description' => 'Updated Desc'
+                'description' => 'Updated Desc',
+                'location' => 'Bandung',
+                'type' => 'Full Time',
+                'requirement' => 'Laravel, PHP',
+                'benefit' => 'BPJS, Bonus',
+                'salary_min' => 6000000,
+                'salary_max' => 9000000,
+                'deadline' => now()->addMonth()->format('Y-m-d'),
+                'is_active' => 1,
             ]);
 
         $response->assertRedirect();
 
         $this->assertDatabaseHas('jobs', [
             'id' => $job->id,
-            'title' => 'Updated Job'
+            'title' => 'Updated Job',
+            'location' => 'Bandung',
         ]);
     }
 }
