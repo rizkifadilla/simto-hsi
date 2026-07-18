@@ -15,7 +15,7 @@ use App\Http\Controllers\ProfileController;
 | Redirect Root
 |--------------------------------------------------------------------------
 */
-Route::redirect('/', '/dashboard-general-dashboard');
+Route::redirect('/', '/my-attendance');
 
 /*
 |--------------------------------------------------------------------------

@@ -26,9 +26,9 @@ class AuthController extends Controller
         if (Auth::attempt($credentials, $request->remember)) {
             $request->session()->regenerate();
             if (auth()->user()->role === 'employee' || auth()->user()->role === 'talent acquisition') {
-                return redirect()->intended('/my-attendance');
+                return redirect('/my-attendance');
             }
-            return redirect()->intended('/dashboard-general-dashboard');
+            return redirect('/dashboard-general-dashboard');
         }
 
         return back()->withErrors([
