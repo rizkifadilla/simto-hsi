@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 initialized = true;
 
                 show(
-                    "➡️ Move your head to: <b>" +
+                    "Move your head to: <b>" +
                     targetDirection +
                     "</b>",
                     "primary"
@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     directionCounter = 0;
 
                     show(
-                        "➡️ Move your head to: <b>" +
+                        "Move your head to: <b>" +
                         targetDirection +
                         "</b>",
                         "primary"
