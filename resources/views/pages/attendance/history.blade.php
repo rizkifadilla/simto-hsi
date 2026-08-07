@@ -75,7 +75,7 @@
                                             <th>Date</th>
                                             <th>Check In</th>
                                             <th>Check Out</th>
-                                            <th>Deration</th>
+                                            <th>Duration</th>
                                             <th>Location</th>
                                             <th>Face</th>
                                             <th>Task</th>

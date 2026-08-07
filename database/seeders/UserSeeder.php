@@ -17,7 +17,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'admin',
             'employee_id' => 'EMP001',
-            'company' => 'PT Outsource Maju',
+            'company' => '-',
             'is_active' => true
         ]);
 
@@ -28,7 +28,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'talent acquisition',
             'employee_id' => 'EMP002',
-            'company' => 'PT Outsource Maju',
+            'company' => '-',
             'is_active' => true
         ]);
 
@@ -39,7 +39,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'employee',
             'employee_id' => 'EMP003',
-            'company' => 'PT Outsource Maju',
+            'company' => '-',
             'is_active' => true
         ]);
 
@@ -49,7 +49,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'employee',
             'employee_id' => 'EMP004',
-            'company' => 'PT Outsource Maju',
+            'company' => '-',
             'is_active' => true
         ]);
     }

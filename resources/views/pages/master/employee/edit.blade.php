@@ -10,6 +10,27 @@
             </div>
 
             <div class="section-body">
+                @if(session('success'))
+                    <div class="alert alert-success">
+                        {{ session('success') }}
+                    </div>
+                @endif
+
+                @if(session('error'))
+                    <div class="alert alert-danger">
+                        {{ session('error') }}
+                    </div>
+                @endif
+
+                @if ($errors->any())
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
                 <div class="card">
                     <div class="card-body">
 
@@ -27,7 +48,7 @@
                                     <div class="form-group">
                                         <label>Email Login</label>
                                         <input type="email" name="email" value="{{ $employee->user->email }}"
-                                            class="form-control" required>
+                                            class="form-control" disabled>
                                     </div>
 
                                     <div class="form-group">
@@ -40,13 +61,11 @@
                                         </select>
                                     </div>
 
-                                    <div class="form-group">
+                                    <!-- <div class="form-group">
                                         <label>Company</label>
                                         <input type="text" name="company" value="{{ $employee->user->company }}"
                                             class="form-control">
-                                    </div>
-
-                                    <hr>
+                                    </div> -->
 
                                     <h6>Data Employee</h6>
 
@@ -70,14 +89,22 @@
 
                                     <div class="form-group">
                                         <label>Phone</label>
-                                        <input type="text" name="phone" value="{{ $employee->phone }}" class="form-control">
+                                        <input
+                                            type="text"
+                                            name="phone"
+                                            class="form-control"
+                                            value="{{ $employee->phone }}"
+                                            inputmode="numeric"
+                                            pattern="[0-9]*"
+                                            maxlength="15"
+                                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                                     </div>
 
-                                    <div class="form-group">
+                                    <!-- <div class="form-group">
                                         <label>Email Employee</label>
                                         <input type="email" name="employee_email" value="{{ $employee->email }}"
                                             class="form-control">
-                                    </div>
+                                    </div> -->
 
                                     <div class="form-group">
                                         <label>Absence Using Distance (GPS)</label>
@@ -113,20 +140,39 @@
 
                                     <div class="form-group">
                                         <label>Position</label>
-                                        <input type="text" name="position" value="{{ $employee->position }}"
-                                            class="form-control">
+                                        <select name="position" class="form-control">
+                                            <option value="">-- Select Position --</option>
+                                            <option value="Staff" {{ $employee->position == 'Staff' ? 'selected' : '' }}>Staff</option>
+                                            <option value="Senior Staff" {{ $employee->position == 'Senior Staff' ? 'selected' : '' }}>Senior Staff</option>
+                                            <option value="Team Leader" {{ $employee->position == 'Team Leader' ? 'selected' : '' }}>Team Leader</option>
+                                            <option value="Supervisor" {{ $employee->position == 'Supervisor' ? 'selected' : '' }}>Supervisor</option>
+                                            <option value="Coordinator" {{ $employee->position == 'Coordinator' ? 'selected' : '' }}>Coordinator</option>
+                                            <option value="Manager" {{ $employee->position == 'Manager' ? 'selected' : '' }}>Manager</option>
+                                        </select>
                                     </div>
 
                                     <div class="form-group">
                                         <label>Division</label>
-                                        <input type="text" name="division" value="{{ $employee->division }}"
-                                            class="form-control">
+                                        <select name="division" class="form-control">
+                                            <option value="">-- Select Division --</option>
+                                            <option value="HRD" {{ $employee->division == 'HRD' ? 'selected' : '' }}>HRD</option>
+                                            <option value="Operational" {{ $employee->division == 'Operational' ? 'selected' : '' }}>Operational</option>
+                                            <option value="Finance" {{ $employee->division == 'Finance' ? 'selected' : '' }}>Finance</option>
+                                            <option value="Marketing" {{ $employee->division == 'Marketing' ? 'selected' : '' }}>Marketing</option>
+                                            <option value="IT" {{ $employee->division == 'IT' ? 'selected' : '' }}>IT</option>
+                                        </select>
                                     </div>
 
                                     <div class="form-group">
                                         <label>Placement</label>
-                                        <input type="text" name="placement" value="{{ $employee->placement }}"
-                                            class="form-control">
+                                        <select name="placement" class="form-control">
+                                            <option value="">-- Select Placement --</option>
+                                            <option value="HO" {{ $employee->placement == 'HO' ? 'selected' : '' }}>HO</option>
+                                            <option value="Client" {{ $employee->placement == 'Client' ? 'selected' : '' }}>Client</option>
+                                            <option value="Project" {{ $employee->placement == 'Project' ? 'selected' : '' }}>Project</option>
+                                            <option value="Warehouse" {{ $employee->placement == 'Warehouse' ? 'selected' : '' }}>Warehouse</option>
+                                            <option value="Remote" {{ $employee->placement == 'Remote' ? 'selected' : '' }}>Remote / WFH</option>
+                                        </select>
                                     </div>
 
                                     <div class="form-group">

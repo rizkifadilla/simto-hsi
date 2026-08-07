@@ -38,9 +38,18 @@
                             <div class="card-header">
                                 <h4>Employee data</h4>
                                 <div class="card-header-action">
-                                    <a href="{{ route('employees.create') }}" class="btn btn-primary mb-3">
+                                    <a href="{{ route('employees.create') }}" class="btn btn-primary">
                                         + Add Employee
                                     </a>
+                                    <a href="{{ route('employees.template') }}" class="btn btn-success">
+                                        Download Template
+                                    </a>
+
+                                    <button class="btn btn-info"
+                                            data-toggle="modal"
+                                            data-target="#importModal">
+                                        Import CSV
+                                    </button>
                                 </div>
                             </div>
                             <div class="card-body">
@@ -48,6 +57,17 @@
                                     <div class="alert alert-success alert-dismissible fade show">
                                         {{ session('success') }}
                                         <button type="button" class="close" data-dismiss="alert">
+                                            <span>&times;</span>
+                                        </button>
+                                    </div>
+                                @endif
+                                @if(session('error'))
+                                    <div class="alert alert-danger alert-dismissible fade show">
+                                        {{ session('error') }}
+
+                                        <button type="button"
+                                                class="close"
+                                                data-dismiss="alert">
                                             <span>&times;</span>
                                         </button>
                                     </div>
@@ -150,6 +170,35 @@
                 </div>
             </div>
         </section>
+    </div>
+    <div class="modal fade" id="importModal">
+        <div class="modal-dialog">
+            <form action="{{ route('employees.import') }}"
+                method="POST"
+                enctype="multipart/form-data">
+                @csrf
+
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5>Import Employee CSV</h5>
+                    </div>
+
+                    <div class="modal-body">
+                        <input type="file"
+                            name="file"
+                            class="form-control"
+                            accept=".csv"
+                            required>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-primary">
+                            Upload
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 @endsection
 

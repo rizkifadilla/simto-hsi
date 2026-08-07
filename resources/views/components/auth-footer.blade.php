@@ -1,3 +1,3 @@
   <div class="simple-footer">
-      Copyright &copy; Stisla 2026
+      Copyright &copy; 2026
   </div>

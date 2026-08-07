@@ -58,6 +58,7 @@
                                         <thead>
                                             <tr>
                                                 <th>#</th>
+                                                <th>Id</th>
                                                 <th>Name</th>
                                                 <th>Address</th>
                                                 <th>Contact Person</th>
@@ -74,6 +75,7 @@
                                             @foreach ($clients as $key => $c)
                                                 <tr>
                                                     <td>{{ $key + 1 }}</td>
+                                                    <td>{{ $c->id }}</td>
                                                     <td>{{ $c->name }}</td>
                                                     <td>{{ $c->address }}</td>
                                                     <td>{{ $c->contact_person }}</td>

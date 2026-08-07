@@ -247,6 +247,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
     // ================= LOAD MODEL =================
+    let directionCounter = 0;
     async function startLiveness() {
 
         const MODEL_URL = window.location.origin + '/models';
@@ -260,12 +261,20 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         show("📷 Turn your face towards the camera", "info");
 
+        let directionCounter = 0;
+
         setInterval(async () => {
 
             if (!video.videoWidth) return;
 
             const detection = await faceapi
-                .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+                .detectSingleFace(
+                    video,
+                    new faceapi.TinyFaceDetectorOptions({
+                        inputSize: 320,
+                        scoreThreshold: 0.3
+                    })
+                )
                 .withFaceLandmarks();
 
             if (!detection) {
@@ -276,83 +285,205 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (!initialized) {
                 targetDirection = randomDirection();
                 initialized = true;
-                show("➡️ Move your head to: <b>" + targetDirection + "</b>", "primary");
+
+                show(
+                    "Move your head to: <b>" +
+                    targetDirection +
+                    "</b>",
+                    "primary"
+                );
+
                 return;
             }
 
-            const nose   = detection.landmarks.getNose()[3];
-            const jaw    = detection.landmarks.getJawOutline();
-            const left   = jaw[0];
-            const right  = jaw[16];
-            const top    = detection.detection.box.top;
-            const bottom = detection.detection.box.bottom;
+            const nose = detection.landmarks.getNose()[3];
 
-            const centerX = (left.x + right.x) / 2;
-            const centerY = (top + bottom) / 2;
+            const jaw = detection.landmarks.getJawOutline();
 
-            const dx = nose.x - centerX;
-            const dy = nose.y - centerY;
+            const leftJaw = jaw[0];
+            const rightJaw = jaw[16];
 
-            const thresholdX = 20;
-            const thresholdY = 15;
+            const box = detection.detection.box;
+
+            const faceTop = box.top;
+            const faceBottom = box.bottom;
+
+            // =================================
+            // HORIZONTAL RATIO
+            // =================================
+
+            const leftDistance =
+                nose.x - leftJaw.x;
+
+            const rightDistance =
+                rightJaw.x - nose.x;
+
+            const horizontalRatio =
+                leftDistance / rightDistance;
+
+            // =================================
+            // VERTICAL RATIO
+            // =================================
+
+            const verticalRatio =
+                (nose.y - faceTop) /
+                (faceBottom - faceTop);
 
             let currentDirection = 'CENTER';
 
-            if (dx > thresholdX) currentDirection = 'RIGHT';
-            else if (dx < -thresholdX) currentDirection = 'LEFT';
-            else if (dy > thresholdY) currentDirection = 'DOWN';
-            else if (dy < -thresholdY) currentDirection = 'UP';
+            if (horizontalRatio > 1.25) {
+                currentDirection = 'LEFT';
+            }
+            else if (horizontalRatio < 0.80) {
+                currentDirection = 'RIGHT';
+            }
+            else if (verticalRatio < 0.42) {
+                currentDirection = 'UP';
+            }
+            else if (verticalRatio > 0.58) {
+                currentDirection = 'DOWN';
+            }
 
-            // ================= GERAK =================
+            console.log({
+                horizontalRatio: horizontalRatio.toFixed(2),
+                verticalRatio: verticalRatio.toFixed(2),
+                direction: currentDirection,
+                target: targetDirection
+            });
+
+            // =================================
+            // VALIDASI GERAK
+            // =================================
+
             if (!movementPassed) {
+
                 if (currentDirection === targetDirection) {
-                    hasMoved = true;
-                    movementPassed = true;
-                    show("✅ Good! Return to center", "success");
+
+                    directionCounter++;
+
+                    show(
+                        "✅ Hold position (" +
+                        directionCounter +
+                        "/3)",
+                        "success"
+                    );
+
+                    if (directionCounter >= 3) {
+
+                        hasMoved = true;
+                        movementPassed = true;
+
+                        show(
+                            "✅ Good! Return to center",
+                            "success"
+                        );
+                    }
+
                 } else {
-                    show("➡️ Follow directions: <b>" + targetDirection + "</b>", "primary");
+
+                    directionCounter = 0;
+
+                    show(
+                        "Move your head to: <b>" +
+                        targetDirection +
+                        "</b>",
+                        "primary"
+                    );
                 }
+
                 return;
             }
 
-            // ================= BALIK KE TENGAH =================
-            if (movementPassed && hasMoved && currentDirection === 'CENTER' && !autoCaptured) {
+            // =================================
+            // KEMBALI KE TENGAH
+            // =================================
+
+            const isCenter =
+                horizontalRatio >= 0.80 &&
+                horizontalRatio <= 1.20 &&
+                verticalRatio >= 0.35 &&
+                verticalRatio <= 0.65;
+
+            if (
+                movementPassed &&
+                hasMoved &&
+                isCenter &&
+                !autoCaptured
+            ) {
 
                 autoCaptured = true;
 
                 let ctx = canvas.getContext('2d');
-                canvas.width  = video.videoWidth;
+
+                canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
 
-                ctx.drawImage(video, 0, 0);
+                ctx.drawImage(
+                    video,
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
 
                 const fullDetection = await faceapi
-                    .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions())
+                    .detectSingleFace(
+                        canvas,
+                        new faceapi.TinyFaceDetectorOptions({
+                            inputSize: 320,
+                            scoreThreshold: 0.3
+                        })
+                    )
                     .withFaceLandmarks()
                     .withFaceDescriptor();
 
                 if (!fullDetection) {
-                    show("❌ Failed to take face", "danger");
+
                     autoCaptured = false;
+
+                    show(
+                        "❌ Failed to capture face",
+                        "danger"
+                    );
+
                     return;
                 }
 
-                let descriptor = Array.from(fullDetection.descriptor);
+                const descriptor =
+                    Array.from(
+                        fullDetection.descriptor
+                    );
 
-                document.getElementById('face_descriptor').value =
+                document.getElementById(
+                    'face_descriptor'
+                ).value =
                     JSON.stringify(descriptor);
 
-                let data = canvas.toDataURL('image/png');
+                const data =
+                    canvas.toDataURL('image/png');
 
-                document.getElementById('photo').value   = data;
-                document.getElementById('preview').src   = data;
+                document.getElementById(
+                    'photo'
+                ).value =
+                    data;
 
-                show("✅ Ready to be absent", "success");
+                document.getElementById(
+                    'preview'
+                ).src =
+                    data;
 
-                document.getElementById('actionArea').style.display = 'block';
+                document.getElementById(
+                    'actionArea'
+                ).style.display =
+                    'block';
+
+                show(
+                    "✅ Ready to be absent",
+                    "success"
+                );
             }
 
-        }, 700);
+        }, 200);
     }
 
 });

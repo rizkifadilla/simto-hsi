@@ -1,16 +1,68 @@
+# Laravel
+/vendor
 /node_modules
-/public/build
-/public/hot
 /public/storage
 /storage/*.key
-/vendor
+
+# Environment
 .env
-.env.backup
+.env.*
+!.env.example
+
+# PHPUnit
 .phpunit.result.cache
-Homestead.json
-Homestead.yaml
-auth.json
-npm-debug.log
-yarn-error.log
-/.idea
-/.vscode
+coverage/
+build/
+test-results/
+
+# Pest / PHPUnit Coverage
+clover.xml
+coverage.xml
+html-coverage/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+/storage/logs/*
+!/storage/logs/.gitignore
+
+# Cache
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+
+# Temporary files
+*.tmp
+*.temp
+
+# SQLite testing
+database/database.sqlite
+
+# Generated test reports
+junit.xml
+report.xml
+
+# NPM
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Composer
+composer.phar
+
+coverage/
+coverage.xml
+.phpunit.result.cache
+
+# PHPUnit Coverage
+coverage-report/
+coverage/
+coverage.xml
+.phpunit.result.cache

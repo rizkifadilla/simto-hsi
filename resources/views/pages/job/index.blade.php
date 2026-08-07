@@ -63,7 +63,7 @@
                                     <td>
                                         <a href="{{ route('career.applicants', $job->id) }}" 
                                         class="btn btn-info btn-sm">
-                                            Pelamar
+                                            Applicant
                                         </a>
                                         <a href="{{ route('career.edit', $job->id) }}" 
                                         class="btn btn-warning btn-sm">
@@ -76,7 +76,7 @@
                                             @csrf
                                             @method('DELETE')
                                             <button class="btn btn-danger btn-sm" 
-                                                    onclick="return confirm('Hapus?')">
+                                                    onclick="return confirm('Delete?')">
                                                 Delete
                                             </button>
                                         </form>

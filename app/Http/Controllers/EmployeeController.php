@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\Employee;
 use App\Models\User;
 use App\Models\Client;
@@ -46,82 +48,105 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            // USER
             'email' => 'required|email|unique:users,email',
-            'password' => 'nullable|min:6',
-
-            // EMPLOYEE
             'employee_id' => 'required|unique:employees,employee_id',
             'full_name' => 'required',
             'nik_ktp' => 'required|unique:employees,nik_ktp',
-            'phone' => 'required',
+            'phone' => ['required', 'digits_between:10,15'],
             'client_id' => 'required',
             'join_date' => 'required|date',
             'contract_start' => 'required|date',
             'contract_end' => 'required|date|after:contract_start',
         ]);
 
-        // 🔥 CREATE USER
-        $user = User::create([
-            'name' => $request->full_name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password ?? 'password'),
-            'role' => $request->role ?? 'employee',
-            'employee_id' => $request->employee_id,
-            'company' => $request->company,
-            'is_active' => true
-        ]);
+        try {
+            $user = User::create([
+                'name' => $request->full_name,
+                'email' => $request->email,
+                'password' => bcrypt('password'),
+                'role' => $request->role ?? 'employee',
+                'employee_id' => $request->employee_id,
+                'company' => $request->company,
+                'is_active' => true
+            ]);
 
-        // 🔥 CREATE EMPLOYEE
-        Employee::create([
-            'user_id' => $user->id,
-            'client_id' => $request->client_id,
-            'employee_id' => $request->employee_id,
-            'full_name' => $request->full_name,
-            'nik_ktp' => $request->nik_ktp,
-            'phone' => $request->phone,
-            'email' => $request->email,
-            'position' => $request->position,
-            'division' => $request->division,
-            'placement' => $request->placement,
-            'join_date' => $request->join_date,
-            'contract_start' => $request->contract_start,
-            'contract_end' => $request->contract_end,
-            'contract_extension_count' => $request->contract_extension_count ?? 0,
-            'status' => $request->status ?? 'active',
-            'absent_using_distance' => $request->has('absent_using_distance'),
-            'notes' => $request->notes,
-        ]);
+            Employee::create([
+                'user_id' => $user->id,
+                'client_id' => $request->client_id,
+                'employee_id' => $request->employee_id,
+                'full_name' => $request->full_name,
+                'nik_ktp' => $request->nik_ktp,
+                'phone' => $request->phone,
+                'email' => $request->email,
+                'position' => $request->position,
+                'division' => $request->division,
+                'placement' => $request->placement,
+                'join_date' => $request->join_date,
+                'contract_start' => $request->contract_start,
+                'contract_end' => $request->contract_end,
+                'contract_extension_count' => $request->contract_extension_count ?? 0,
+                'status' => $request->status ?? 'active',
+                'absent_using_distance' => $request->has('absent_using_distance'),
+                'notes' => $request->notes,
+            ]);
 
-        return redirect()->route('employees.index')->with('success', 'Employee successfully created');
+            return redirect()
+                ->route('employees.index')
+                ->with('success', 'Employee successfully created');
+
+        } catch (\Exception $e) {
+
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
     }
 
     public function update(Request $request, $id)
     {
+        
+
         $employee = Employee::findOrFail($id);
         $user = User::findOrFail($employee->user_id);
 
         $request->validate([
-            'email' => 'required|email|unique:users,email,' . $user->id,
             'employee_id' => 'required|unique:employees,employee_id,' . $employee->id,
+            'full_name' => 'required',
             'nik_ktp' => 'required|unique:employees,nik_ktp,' . $employee->id,
+            'phone' => ['required', 'digits_between:10,15'],
+            'client_id' => 'required',
+            'join_date' => 'required|date',
+            'contract_start' => 'required|date',
+            'contract_end' => 'required|date|after:contract_start',
+            'position' => 'required',
+            'division' => 'required',
+            'placement' => 'required',
+            'status' => 'required',
+            'role' => 'required',
         ]);
+        try {
+            // update user
+            $user->update([
+                'name' => $request->full_name,
+                'role' => $request->role,
+            ]);
 
-        // update user
-        $user->update([
-            'name' => $request->full_name,
-            'email' => $request->email,
-            'role' => $request->role,
-            'company' => $request->company,
-        ]);
+            // update employee
+            $data = $request->all();
+            $data['absent_using_distance'] = $request->has('absent_using_distance');
 
-        // update employee
-        $data = $request->all();
-        $data['absent_using_distance'] = $request->has('absent_using_distance');
+            $employee->update($data);
 
-        $employee->update($data);
+            return redirect()
+                ->route('employees.index')
+                ->with('success', 'Updated successfully');
 
-        return redirect()->route('employees.index')->with('success', 'Updated successfully');
+        } catch (\Exception $e) {
+
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
     }
 
     public function destroy($id)
@@ -187,4 +212,248 @@ class EmployeeController extends Controller
 
         return back()->with('success', 'Attendance updated!');
     }
+
+    public function distanceSetting(Request $request)
+    {
+        $clientId = $request->client_id;
+        $division = $request->division;
+
+        $employees = Employee::with('client')
+            ->when($clientId, function ($q) use ($clientId) {
+                $q->where('client_id', $clientId);
+            })
+            ->when($division, function ($q) use ($division) {
+                $q->where('division', $division);
+            })
+            ->orderBy('full_name')
+            ->get();
+
+        $clients = Client::orderBy('name')->get();
+
+        $divisions = Employee::select('division')
+            ->whereNotNull('division')
+            ->distinct()
+            ->pluck('division');
+
+        return view('pages.master.employee.distance-setting', [
+            'employees' => $employees,
+            'clients' => $clients,
+            'divisions' => $divisions,
+            'clientId' => $clientId,
+            'division' => $division,
+            'type_menu' => 'distance-setting',
+        ]);
+    }
+
+    public function updateDistanceSetting(Request $request)
+    {
+        $employeeIds = $request->employee_ids ?? [];
+
+        Employee::query()
+            ->when($request->client_id, function ($q) use ($request) {
+                $q->where('client_id', $request->client_id);
+            })
+            ->when($request->division, function ($q) use ($request) {
+                $q->where('division', $request->division);
+            })
+            ->update([
+                'absent_using_distance' => false
+            ]);
+
+        if (!empty($employeeIds)) {
+            Employee::whereIn('id', $employeeIds)
+                ->update([
+                    'absent_using_distance' => true
+                ]);
+        }
+
+        return back()->with(
+            'success',
+            'Distance setting updated successfully.'
+        );
+    }
+    public function downloadTemplate()
+    {
+        $headers = [
+            'employee_id',
+            'full_name',
+            'email',
+            'role',
+            'nik_ktp',
+            'phone',
+            'client_id',
+            'position',
+            'division',
+            'placement',
+            'join_date',
+            'contract_start',
+            'contract_end',
+            'contract_extension_count',
+            'status',
+            'absent_using_distance',
+            'notes'
+        ];
+
+        $filename = 'employee_template.csv';
+
+        $callback = function () use ($headers) {
+            $file = fopen('php://output', 'w');
+
+            fputcsv($file, $headers);
+
+            // contoh data
+            fputcsv($file, [
+                'EMP001',
+                'John Doe',
+                'john@example.com',
+                'employee',
+                '123456789',
+                '08123456789',
+                1,
+                'Staff',
+                'HRD',
+                'HO',
+                '2026-01-01',
+                '2026-01-01',
+                '2026-12-31',
+                0,
+                'active',
+                1,
+                'Example note'
+            ]);
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename=' . $filename,
+        ]);
+    }
+
+    public function import(Request $request)
+{
+    $request->validate([
+        'file' => 'required|mimes:csv,txt',
+    ]);
+
+    DB::beginTransaction();
+
+    try {
+
+        $file = fopen(
+            $request->file('file')->getRealPath(),
+            'r'
+        );
+
+        // Skip header
+        fgetcsv($file);
+
+        $inserted = 0;
+        $line = 2; // karena header di baris 1
+
+        while (($row = fgetcsv($file)) !== false) {
+
+            if (count($row) < 17) {
+                throw new \Exception(
+                    "Invalid CSV format on row {$line}. Expected 17 columns, found " . count($row) . "."
+                );
+            }
+
+            // Validasi data kosong
+            if (
+                empty($row[0]) ||
+                empty($row[1]) ||
+                empty($row[2]) ||
+                empty($row[4]) ||
+                empty($row[5])
+            ) {
+                throw new \Exception(
+                    "Required data is missing on row {$line}."
+                );
+            }
+
+            // Duplicate email
+            if (User::where('email', $row[2])->exists()) {
+                throw new \Exception(
+                    "Duplicate email '{$row[2]}' found on row {$line}."
+                );
+            }
+
+            // Duplicate employee id
+            if (Employee::where('employee_id', $row[0])->exists()) {
+                throw new \Exception(
+                    "Employee ID '{$row[0]}' already exists on row {$line}."
+                );
+            }
+
+            // Duplicate NIK
+            if (Employee::where('nik_ktp', $row[4])->exists()) {
+                throw new \Exception(
+                    "NIK '{$row[4]}' already exists on row {$line}."
+                );
+            }
+
+            // Client tidak ada
+            if (!Client::find($row[6])) {
+                throw new \Exception(
+                    "Client ID '{$row[6]}' not found on row {$line}."
+                );
+            }
+
+            $user = User::create([
+                'name' => $row[1],
+                'email' => $row[2],
+                'password' => bcrypt('password'),
+                'role' => $row[3] ?: 'employee',
+                'employee_id' => $row[0],
+                'company' => '-',
+                'is_active' => true,
+            ]);
+
+            Employee::create([
+                'user_id' => $user->id,
+                'client_id' => $row[6],
+                'employee_id' => $row[0],
+                'full_name' => $row[1],
+                'nik_ktp' => $row[4],
+                'phone' => $row[5],
+                'email' => $row[2],
+                'position' => $row[7],
+                'division' => $row[8],
+                'placement' => $row[9],
+                'join_date' => $row[10],
+                'contract_start' => $row[11],
+                'contract_end' => $row[12],
+                'contract_extension_count' => $row[13] ?: 0,
+                'status' => $row[14] ?: 'active',
+                'absent_using_distance' => (bool) $row[15],
+                'notes' => $row[16],
+            ]);
+
+            $inserted++;
+            $line++;
+        }
+
+        fclose($file);
+
+        DB::commit();
+
+        return back()->with(
+            'success',
+            "{$inserted} employee imported successfully."
+        );
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        Log::error($e);
+
+        return back()->withInput()->with(
+            'error',
+            $e->getMessage()
+        );
+    }
+}
 }
