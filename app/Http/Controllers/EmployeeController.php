@@ -13,12 +13,239 @@ use Carbon\Carbon;
 
 class EmployeeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $employees = Employee::with('client')->get();
+        // =========================================================
+        // FILTER PARAMETER
+        // =========================================================
+
+        $clientId = $request->client_id;
+        $division = $request->division;
+        $status = $request->status;
+        $contractExpiring = $request->contract_expiring;
+
+
+        // =========================================================
+        // BASE QUERY
+        // =========================================================
+
+        $query = Employee::with('client');
+
+
+        // =========================================================
+        // FILTER CLIENT
+        // =========================================================
+
+        if ($clientId) {
+            $query->where('client_id', $clientId);
+        }
+
+
+        // =========================================================
+        // FILTER DIVISION
+        // =========================================================
+
+        if ($division) {
+            $query->where('division', $division);
+        }
+
+
+        // =========================================================
+        // FILTER STATUS
+        // =========================================================
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+
+        // =========================================================
+        // GET EMPLOYEE DATA
+        // =========================================================
+
+        $employees = $query
+            ->orderBy('full_name')
+            ->get();
+
+
+        // =========================================================
+        // FILTER CONTRACT EXPIRING < 30 DAYS
+        // =========================================================
+
+        if ($contractExpiring == '30') {
+
+            $today = Carbon::today();
+            $thirtyDays = Carbon::today()->addDays(30);
+
+            $employees = $employees->filter(function ($employee) use (
+                $today,
+                $thirtyDays
+            ) {
+
+                if (!$employee->contract_end) {
+                    return false;
+                }
+
+                $contractEnd = Carbon::parse($employee->contract_end);
+
+                return $contractEnd->greaterThanOrEqualTo($today)
+                    && $contractEnd->lessThanOrEqualTo($thirtyDays);
+            });
+
+        }
+
+
+        // =========================================================
+        // SUMMARY
+        // =========================================================
+
+        $totalEmployees = $employees->count();
+
+
+        // =========================================================
+        // ACTIVE EMPLOYEE
+        // =========================================================
+
+        $activeEmployees = $employees
+            ->where('status', 'active')
+            ->count();
+
+
+        // =========================================================
+        // INACTIVE EMPLOYEE
+        // =========================================================
+
+        $inactiveEmployees = $employees
+            ->where('status', 'inactive')
+            ->count();
+
+
+        // =========================================================
+        // CONTRACT SUMMARY
+        // =========================================================
+
+        $today = Carbon::today();
+
+        $contractExpiring = $employees->filter(function ($employee) use ($today) {
+
+            if (!$employee->contract_end) {
+                return false;
+            }
+
+            $contractEnd = Carbon::parse($employee->contract_end);
+
+            $daysLeft = $today->diffInDays($contractEnd, false);
+
+            return $daysLeft >= 0 && $daysLeft <= 30;
+
+        })->count();
+
+
+        // =========================================================
+        // CONTRACT EXPIRED
+        // =========================================================
+
+        $contractExpired = $employees->filter(function ($employee) use ($today) {
+
+            if (!$employee->contract_end) {
+                return false;
+            }
+
+            $contractEnd = Carbon::parse($employee->contract_end);
+
+            return $contractEnd->isBefore($today);
+
+        })->count();
+
+
+        // =========================================================
+        // EMPLOYEE BY CLIENT
+        // =========================================================
+
+        $employeesByClient = $employees
+            ->groupBy(function ($employee) {
+
+                return $employee->client_id ?? 0;
+
+            })
+            ->map(function ($items) {
+
+                return (object) [
+                    'client' => $items->first()->client,
+                    'total' => $items->count()
+                ];
+
+            })
+            ->sortByDesc('total')
+            ->values();
+
+
+        // =========================================================
+        // EMPLOYEE BY DIVISION
+        // =========================================================
+
+        $employeesByDivision = $employees
+            ->groupBy(function ($employee) {
+
+                return $employee->division ?? 'No Division';
+
+            })
+            ->map(function ($items, $divisionName) {
+
+                return (object) [
+                    'division' => $divisionName,
+                    'total' => $items->count()
+                ];
+
+            })
+            ->sortByDesc('total')
+            ->values();
+
+
+        // =========================================================
+        // FILTER DATA
+        // =========================================================
+
+        $clients = Client::orderBy('name')->get();
+
+        $divisions = Employee::query()
+            ->whereNotNull('division')
+            ->where('division', '!=', '')
+            ->distinct()
+            ->orderBy('division')
+            ->pluck('division');
+
+
+        // =========================================================
+        // RETURN VIEW
+        // =========================================================
 
         return view('pages.master.employee.index', [
+
             'employees' => $employees,
+
+            // Summary
+            'totalEmployees' => $totalEmployees,
+            'activeEmployees' => $activeEmployees,
+            'inactiveEmployees' => $inactiveEmployees,
+            'contractExpiring' => $contractExpiring,
+            'contractExpired' => $contractExpired,
+
+            // Summary detail
+            'employeesByClient' => $employeesByClient,
+            'employeesByDivision' => $employeesByDivision,
+
+            // Filter
+            'clients' => $clients,
+            'divisions' => $divisions,
+
+            'clientId' => $clientId,
+            'division' => $division,
+            'status' => $status,
+
+            // Contract filter
+            'contractExpiringFilter' => $request->contract_expiring,
+
             'type_menu' => 'master'
         ]);
     }
