@@ -106,6 +106,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/my-attendance/export', [AttendanceController::class, 'export'])
         ->name('attendance.export');
+    Route::get('/attendance/export/pdf',[AttendanceController::class, 'exportPdf'])
+        ->name('attendance.export.pdf');
 
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');

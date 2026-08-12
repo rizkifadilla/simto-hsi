@@ -9,6 +9,7 @@ use App\Models\Client;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use stdClass;
 
 class AttendanceController extends Controller
 {
@@ -180,74 +181,541 @@ class AttendanceController extends Controller
         return $earthRadius * $c; // hasil meter
     }
 
-    public function myAttendance()
+    public function myAttendance(Request $request)
     {
         $employee = auth()->user()->employee;
 
-        $attendances = Attendance::where('employee_id', $employee->id)
-            ->orderByDesc('date')
-            ->get();
+        // =========================================================
+        // FILTER
+        // =========================================================
+
+        $month    = $request->month;
+        $from     = $request->from;
+        $to       = $request->to;
+        $status   = $request->status;
+        $location = $request->location;
+        $face     = $request->face;
+
+
+        // =========================================================
+        // DEFAULT MONTH
+        // Kalau tidak memilih month, gunakan bulan sekarang
+        // =========================================================
+
+        if (!$month && !$from && !$to) {
+            $month = now()->format('Y-m');
+        }
+
+
+        // =========================================================
+        // TENTUKAN RANGE TANGGAL
+        // =========================================================
+
+        if ($month) {
+
+            try {
+                $monthDate = Carbon::createFromFormat(
+                    'Y-m',
+                    $month
+                )->startOfMonth();
+
+                $periodStart = $monthDate->copy()->startOfMonth();
+                $periodEnd   = $monthDate->copy()->endOfMonth();
+
+            } catch (\Exception $e) {
+
+                $month = now()->format('Y-m');
+
+                $monthDate = Carbon::createFromFormat(
+                    'Y-m',
+                    $month
+                )->startOfMonth();
+
+                $periodStart = $monthDate->copy()->startOfMonth();
+                $periodEnd   = $monthDate->copy()->endOfMonth();
+            }
+
+        } else {
+
+            $periodStart = $from
+                ? Carbon::parse($from)->startOfDay()
+                : now()->startOfMonth();
+
+            $periodEnd = $to
+                ? Carbon::parse($to)->endOfDay()
+                : now()->endOfDay();
+        }
+
+
+        // =========================================================
+        // JANGAN TAMPILKAN TANGGAL MASA DEPAN
+        //
+        // Kalau bulan sekarang:
+        // contoh hari ini 9 Agustus
+        // tanggal 10-31 tidak dibuat sebagai Absent
+        //
+        // Kalau bulan sebelumnya:
+        // semua tanggal sampai akhir bulan bisa ditampilkan.
+        // =========================================================
+
+        $today = now()->startOfDay();
+
+        if ($periodEnd->greaterThan($today)) {
+            $periodEnd = $today->copy();
+        }
+
+
+        // Kalau range akhirnya lebih kecil dari awal
+        if ($periodEnd->lt($periodStart)) {
+
+            $attendances = collect();
+
+            return view('pages.attendance.history', [
+
+                'type_menu' => 'myattendance',
+
+                'attendances' => $attendances,
+
+                'month' => $month,
+                'from' => $from,
+                'to' => $to,
+                'status' => $status,
+                'location' => $location,
+                'face' => $face,
+
+                'totalDays' => 0,
+                'totalPresent' => 0,
+                'totalPermit' => 0,
+                'totalLeave' => 0,
+                'totalSick' => 0,
+                'totalAbsent' => 0,
+
+            ]);
+        }
+
+
+        // =========================================================
+        // AMBIL DATA ATTENDANCE
+        // =========================================================
+
+        $attendanceQuery = Attendance::where(
+            'employee_id',
+            $employee->id
+        )
+            ->whereBetween('date', [
+                $periodStart->format('Y-m-d'),
+                $periodEnd->format('Y-m-d')
+            ]);
+
+
+        $attendanceData = $attendanceQuery
+            ->get()
+            ->keyBy(function ($attendance) {
+                return Carbon::parse($attendance->date)
+                    ->format('Y-m-d');
+            });
+
+
+        // =========================================================
+        // BUAT DATA HARI KERJA
+        //
+        // Sabtu & Minggu TIDAK ditampilkan di web.
+        //
+        // Hari kerja yang belum terjadi juga tidak dibuat.
+        // =========================================================
+
+        $attendances = collect();
+
+        $period = CarbonPeriod::create(
+            $periodStart,
+            $periodEnd
+        );
+
+
+        foreach ($period as $date) {
+
+            // =====================================================
+            // SKIP SABTU & MINGGU
+            // =====================================================
+
+            if (in_array($date->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
+                continue;
+            }
+
+
+            $key = $date->format('Y-m-d');
+
+            $attendance = $attendanceData->get($key);
+
+
+            // =====================================================
+            // ADA DATA ATTENDANCE
+            // =====================================================
+
+            if ($attendance) {
+
+                $attendance->is_absent = false;
+
+                $attendances->push($attendance);
+
+                continue;
+            }
+
+
+            // =====================================================
+            // TIDAK ADA DATA
+            //
+            // Karena periodEnd sudah dibatasi sampai hari ini,
+            // data kosong di sini berarti hari kerja yang sudah lewat.
+            // Jadi dianggap ABSENT.
+            // =====================================================
+
+            $absent = new stdClass();
+
+            $absent->id = null;
+
+            $absent->employee_id = $employee->id;
+
+            $absent->date = $key;
+
+            $absent->check_in = null;
+            $absent->check_out = null;
+
+            $absent->check_in_lat = null;
+            $absent->check_in_long = null;
+
+            $absent->check_out_lat = null;
+            $absent->check_out_long = null;
+
+            $absent->working_minutes = null;
+
+            $absent->is_within_radius = null;
+            $absent->is_face_valid = null;
+
+            $absent->task = null;
+
+            $absent->is_absent = true;
+
+            $attendances->push($absent);
+        }
+
+
+        // =========================================================
+        // FILTER STATUS
+        // =========================================================
+
+        $attendances = $attendances->filter(function ($attendance) use ($status) {
+
+            if (!$status) {
+                return true;
+            }
+
+
+            // -----------------------------------------------------
+            // ABSENT
+            // -----------------------------------------------------
+
+            if ($status === 'absent') {
+
+                return $attendance->is_absent === true;
+            }
+
+
+            // -----------------------------------------------------
+            // PRESENT
+            // -----------------------------------------------------
+
+            if ($status === 'hadir') {
+
+                return !$attendance->is_absent
+                    && !empty($attendance->check_in)
+                    && !in_array(
+                        strtolower($attendance->task ?? ''),
+                        ['izin', 'cuti', 'sakit']
+                    );
+            }
+
+
+            // -----------------------------------------------------
+            // PERMIT
+            // -----------------------------------------------------
+
+            if ($status === 'izin') {
+
+                return !$attendance->is_absent
+                    && strtolower($attendance->task ?? '') === 'izin';
+            }
+
+
+            // -----------------------------------------------------
+            // LEAVE
+            // -----------------------------------------------------
+
+            if ($status === 'cuti') {
+
+                return !$attendance->is_absent
+                    && strtolower($attendance->task ?? '') === 'cuti';
+            }
+
+
+            // -----------------------------------------------------
+            // SICK
+            // -----------------------------------------------------
+
+            if ($status === 'sakit') {
+
+                return !$attendance->is_absent
+                    && strtolower($attendance->task ?? '') === 'sakit';
+            }
+
+
+            return true;
+        });
+
+
+        // =========================================================
+        // FILTER LOCATION
+        // =========================================================
+
+        if ($location === 'valid') {
+
+            $attendances = $attendances->filter(function ($attendance) {
+
+                return !$attendance->is_absent
+                    && $attendance->is_within_radius === true;
+            });
+
+        } elseif ($location === 'outside') {
+
+            $attendances = $attendances->filter(function ($attendance) {
+
+                return !$attendance->is_absent
+                    && $attendance->is_within_radius === false;
+            });
+        }
+
+
+        // =========================================================
+        // FILTER FACE
+        // =========================================================
+
+        if ($face === 'valid') {
+
+            $attendances = $attendances->filter(function ($attendance) {
+
+                return !$attendance->is_absent
+                    && $attendance->is_face_valid === true;
+            });
+
+        } elseif ($face === 'invalid') {
+
+            $attendances = $attendances->filter(function ($attendance) {
+
+                return !$attendance->is_absent
+                    && $attendance->is_face_valid === false;
+            });
+        }
+
+
+        // =========================================================
+        // SORT TANGGAL ASCENDING
+        //
+        // 01
+        // 02
+        // 03
+        // ...
+        // 30
+        // 31
+        // =========================================================
+
+        $attendances = $attendances
+            ->sortBy(function ($attendance) {
+
+                return Carbon::parse($attendance->date)
+                    ->format('Y-m-d');
+            })
+            ->values();
+
+
+        // =========================================================
+        // SUMMARY
+        // MENGIKUTI HASIL FILTER
+        // =========================================================
+
+        $totalDays = $attendances->count();
+
+
+        // PRESENT
+
+        $totalPresent = $attendances
+            ->filter(function ($attendance) {
+
+                return !$attendance->is_absent
+                    && !empty($attendance->check_in)
+                    && !in_array(
+                        strtolower($attendance->task ?? ''),
+                        ['izin', 'cuti', 'sakit']
+                    );
+            })
+            ->count();
+
+
+        // PERMIT
+
+        $totalPermit = $attendances
+            ->filter(function ($attendance) {
+
+                return !$attendance->is_absent
+                    && strtolower($attendance->task ?? '') === 'izin';
+            })
+            ->count();
+
+
+        // LEAVE
+
+        $totalLeave = $attendances
+            ->filter(function ($attendance) {
+
+                return !$attendance->is_absent
+                    && strtolower($attendance->task ?? '') === 'cuti';
+            })
+            ->count();
+
+
+        // SICK
+
+        $totalSick = $attendances
+            ->filter(function ($attendance) {
+
+                return !$attendance->is_absent
+                    && strtolower($attendance->task ?? '') === 'sakit';
+            })
+            ->count();
+
+
+        // ABSENT
+
+        $totalAbsent = $attendances
+            ->filter(function ($attendance) {
+
+                return $attendance->is_absent === true;
+            })
+            ->count();
+
+
+        // =========================================================
+        // RETURN VIEW
+        // =========================================================
 
         return view('pages.attendance.history', [
+
             'type_menu' => 'myattendance',
-            'attendances' => $attendances
+
+            'attendances' => $attendances,
+
+            // filter
+            'month' => $month,
+            'from' => $from,
+            'to' => $to,
+            'status' => $status,
+            'location' => $location,
+            'face' => $face,
+
+            // summary
+            'totalDays' => $totalDays,
+            'totalPresent' => $totalPresent,
+            'totalPermit' => $totalPermit,
+            'totalLeave' => $totalLeave,
+            'totalSick' => $totalSick,
+            'totalAbsent' => $totalAbsent,
+
         ]);
     }
 
-    // public function export(Request $request)
-    // {
-    //     $request->validate([
-    //         'from' => 'required|date',
-    //         'to' => 'required|date|after_or_equal:from'
-    //     ]);
 
-    //     $employeeId = auth()->user()->employee->id;
-
-    //     $data = Attendance::where('employee_id', $employeeId)
-    //         ->whereBetween('date', [$request->from, $request->to])
-    //         ->orderBy('date', 'desc')
-    //         ->get();
-
-    //     $filename = "attendance_" . now()->format('YmdHis') . ".csv";
-
-    //     $headers = [
-    //         "Content-type" => "text/csv",
-    //         "Content-Disposition" => "attachment; filename=$filename",
-    //     ];
-
-    //     $callback = function () use ($data) {
-    //         $file = fopen('php://output', 'w');
-
-    //         // HEADER
-    //         fputcsv($file, [
-    //             'Tanggal',
-    //             'Check In',
-    //             'Check Out',
-    //             'Durasi (Jam)',
-    //             'Lokasi',
-    //             'Face',
-    //             'Kegiatan'
-    //         ]);
-
-    //         foreach ($data as $row) {
-    //             fputcsv($file, [
-    //                 \Carbon\Carbon::parse($row->date)->format('d-m-Y'),
-    //                 $row->check_in,
-    //                 $row->check_out,
-    //                 $row->working_minutes ? round($row->working_minutes / 60, 2) : 0,
-    //                 $row->is_within_radius ? 'Valid' : 'Diluar',
-    //                 $row->is_face_valid ? 'Valid' : 'Invalid',
-    //                 $row->task
-    //             ]);
-    //         }
-
-    //         fclose($file);
-    //     };
-
-    //     return response()->stream($callback, 200, $headers);
-    // }
+    // =============================================================
+    // EXPORT EXCEL
+    // =============================================================
 
     public function export(Request $request)
+    {
+        $request->validate([
+            'from' => 'required|date',
+            'to' => 'required|date|after_or_equal:from',
+        ]);
+
+        $employee = auth()->user()
+            ->employee
+            ->load('client');
+
+        $attendance = Attendance::where(
+            'employee_id',
+            $employee->id
+        )
+            ->whereBetween('date', [
+                $request->from,
+                $request->to
+            ])
+            ->orderBy('date')
+            ->get()
+            ->keyBy(function ($a) {
+
+                return Carbon::parse($a->date)
+                    ->format('Y-m-d');
+
+            });
+
+        $periode =
+            Carbon::parse($request->from)
+                ->translatedFormat('j F Y')
+            . ' – '
+            . Carbon::parse($request->to)
+                ->translatedFormat('j F Y');
+
+
+        // summary export
+        $summary = $this->calculateExportSummary(
+            $attendance,
+            $request->from,
+            $request->to
+        );
+
+
+        $html = $this->buildExcelHtml(
+            $employee,
+            $attendance,
+            $request->from,
+            $request->to,
+            $periode,
+            $summary
+        );
+
+
+        $filename =
+            'timesheet_'
+            . now()->format('YmdHis')
+            . '.xls';
+
+
+        return response($html, 200, [
+
+            'Content-Type' =>
+                'application/vnd.ms-excel',
+
+            'Content-Disposition' =>
+                "attachment; filename=\"{$filename}\"",
+
+            'Cache-Control' =>
+                'max-age=0',
+        ]);
+    }
+
+
+    // =============================================================
+    // EXPORT PDF
+    // =============================================================
+
+    public function exportPdf(Request $request)
     {
         $request->validate([
             'from' => 'required|date',
@@ -256,198 +724,950 @@ class AttendanceController extends Controller
 
         $employee = auth()->user()->employee->load('client');
 
-        $attendance = Attendance::where('employee_id', $employee->id)
-            ->whereBetween('date', [$request->from, $request->to])
+        // =========================================================
+        // ATTENDANCE
+        // =========================================================
+
+        $attendance = Attendance::where(
+            'employee_id',
+            $employee->id
+        )
+            ->whereBetween('date', [
+                $request->from,
+                $request->to
+            ])
             ->orderBy('date')
             ->get()
-            ->keyBy(fn($a) => Carbon::parse($a->date)->format('Y-m-d'));
+            ->keyBy(function ($attendance) {
+                return Carbon::parse($attendance->date)
+                    ->format('Y-m-d');
+            });
 
-        $periode = Carbon::parse($request->from)->translatedFormat('j F Y')
+
+        // =========================================================
+        // PERIOD
+        // =========================================================
+
+        $period = CarbonPeriod::create(
+            $request->from,
+            $request->to
+        );
+
+
+        // =========================================================
+        // SUMMARY
+        // =========================================================
+
+        $totalDays = 0;
+        $totalPresent = 0;
+        $totalPermit = 0;
+        $totalLeave = 0;
+        $totalSick = 0;
+        $totalAbsent = 0;
+
+
+        foreach ($period as $date) {
+
+            $key = $date->format('Y-m-d');
+
+            $att = $attendance->get($key);
+
+
+            // ---------------------------------------------------------
+            // WEEKEND
+            // ---------------------------------------------------------
+
+            if (in_array($date->dayOfWeek, [0, 6])) {
+                continue;
+            }
+
+
+            // ---------------------------------------------------------
+            // HARI KERJA
+            // ---------------------------------------------------------
+
+            $totalDays++;
+
+
+            // Tidak ada attendance
+            // berarti ABSENT
+            if (!$att) {
+
+                $totalAbsent++;
+
+                continue;
+            }
+
+
+            $task = strtolower(
+                trim($att->task ?? '')
+            );
+
+
+            // ---------------------------------------------------------
+            // PERMIT
+            // ---------------------------------------------------------
+
+            if ($task === 'izin') {
+
+                $totalPermit++;
+
+                continue;
+            }
+
+
+            // ---------------------------------------------------------
+            // LEAVE
+            // ---------------------------------------------------------
+
+            if ($task === 'cuti') {
+
+                $totalLeave++;
+
+                continue;
+            }
+
+
+            // ---------------------------------------------------------
+            // SICK
+            // ---------------------------------------------------------
+
+            if ($task === 'sakit') {
+
+                $totalSick++;
+
+                continue;
+            }
+
+
+            // ---------------------------------------------------------
+            // PRESENT
+            // ---------------------------------------------------------
+
+            if ($att->check_in) {
+
+                $totalPresent++;
+
+                continue;
+            }
+
+
+            // ---------------------------------------------------------
+            // ABSENT
+            // ---------------------------------------------------------
+
+            $totalAbsent++;
+        }
+
+
+        // =========================================================
+        // PERIODE
+        // =========================================================
+
+        $periode = Carbon::parse($request->from)
+            ->translatedFormat('j F Y')
             . ' – '
-            . Carbon::parse($request->to)->translatedFormat('j F Y');
+            . Carbon::parse($request->to)
+                ->translatedFormat('j F Y');
 
-        $html = $this->buildHtml($employee, $attendance, $request->from, $request->to, $periode);
 
-        $filename = 'timesheet_' . now()->format('YmdHis') . '.xls';
+        // =========================================================
+        // VIEW PDF
+        // =========================================================
 
-        return response($html, 200, [
-            'Content-Type'        => 'application/vnd.ms-excel',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-            'Cache-Control'       => 'max-age=0',
+        return view('pages.attendance.pdf', [
+
+            'employee' => $employee,
+
+            'attendance' => $attendance,
+
+            'period' => CarbonPeriod::create(
+                $request->from,
+                $request->to
+            ),
+
+            'periode' => $periode,
+
+            // Summary
+            'totalDays' => $totalDays,
+
+            'totalPresent' => $totalPresent,
+
+            'totalPermit' => $totalPermit,
+
+            'totalLeave' => $totalLeave,
+
+            'totalSick' => $totalSick,
+
+            'totalAbsent' => $totalAbsent,
         ]);
     }
 
-    private function buildHtml($employee, $attendance, string $from, string $to, string $periode): string
-    {
-        $client = $employee->client;
 
-        // Jam & working hours selalu dari Client
-        $timeIn  = $client?->check_in_time  ? Carbon::parse($client->check_in_time)->format('H:i')  : '';
-        $timeOut = $client?->check_out_time ? Carbon::parse($client->check_out_time)->format('H:i') : '';
+    // =============================================================
+    // SUMMARY EXPORT
+    // =============================================================
 
-        $workingHours = '';
-        if ($client?->check_in_time && $client?->check_out_time) {
-            $mins         = Carbon::parse($client->check_out_time)->diffInMinutes(Carbon::parse($client->check_in_time));
-            $workingHours = sprintf('%d:%02d', intdiv($mins, 60), $mins % 60);
-        }
+    private function calculateExportSummary(
+        $attendance,
+        string $from,
+        string $to
+    ) {
 
-        $rows = '';
-        $no   = 1;
+        $totalDays = 0;
+        $totalPresent = 0;
+        $totalPermit = 0;
+        $totalLeave = 0;
+        $totalSick = 0;
+        $totalAbsent = 0;
 
-        $period = CarbonPeriod::create($from, $to);
+
+        $period = CarbonPeriod::create(
+            Carbon::parse($from),
+            Carbon::parse($to)
+        );
+
 
         foreach ($period as $date) {
-            $key       = $date->format('Y-m-d');
-            $att       = $attendance->get($key);
-            $isWeekend = in_array($date->dayOfWeek, [0, 6]);
-            $hasWork   = $att && $att->check_in;
 
-            $task = $att ? nl2br(e($att->task ?? '')) : '';
-
-            // Warna baris
-            if ($isWeekend) {
-                $rowBg = '#F2F2F2';
-                $bold  = 'font-weight:bold;';
-                $task  = $task ?: ($date->dayOfWeek === 6 ? 'Sabtu' : 'Minggu');
-            } elseif ($att && !$hasWork && $att->task) {
-                // Libur / Cuti
-                $rowBg = '#FCE5CD';
-                $bold  = 'font-weight:bold;';
-            } else {
-                $rowBg = '#FFFFFF';
-                $bold  = '';
+            // Weekend tidak dihitung sebagai attendance
+            if ($date->isWeekend()) {
+                continue;
             }
 
-            // Time In / Out / Working Hours hanya tampil kalau hari kerja & check_in ada
-            $rowTimeIn    = $hasWork ? $timeIn    : '';
-            $rowTimeOut   = $hasWork ? $timeOut   : '';
-            $rowWorkHours = $hasWork ? $workingHours : '';
+
+            $totalDays++;
+
+
+            $key = $date->format('Y-m-d');
+
+            $att = $attendance->get($key);
+
+
+            // Tidak ada attendance record
+            if (!$att) {
+
+                $totalAbsent++;
+
+                continue;
+            }
+
+
+            // Izin
+            if ($att->task === 'izin') {
+
+                $totalPermit++;
+
+                continue;
+            }
+
+
+            // Cuti
+            if ($att->task === 'cuti') {
+
+                $totalLeave++;
+
+                continue;
+            }
+
+
+            // Sakit
+            if ($att->task === 'sakit') {
+
+                $totalSick++;
+
+                continue;
+            }
+
+
+            // Hadir
+            if ($att->check_in) {
+
+                $totalPresent++;
+
+                continue;
+            }
+
+
+            // Tidak hadir
+            $totalAbsent++;
+        }
+
+
+        return [
+
+            'totalDays' => $totalDays,
+
+            'totalPresent' => $totalPresent,
+
+            'totalPermit' => $totalPermit,
+
+            'totalLeave' => $totalLeave,
+
+            'totalSick' => $totalSick,
+
+            'totalAbsent' => $totalAbsent,
+
+        ];
+    }
+
+
+    // =============================================================
+    // BUILD EXCEL
+    // =============================================================
+
+    private function buildExcelHtml(
+        $employee,
+        $attendance,
+        string $from,
+        string $to,
+        string $periode,
+        array $summary
+    ): string {
+
+        $client = $employee->client;
+
+
+        // Jam kerja client
+        $timeIn =
+            $client?->check_in_time
+                ? Carbon::parse(
+                    $client->check_in_time
+                )->format('H:i')
+                : '';
+
+
+        $timeOut =
+            $client?->check_out_time
+                ? Carbon::parse(
+                    $client->check_out_time
+                )->format('H:i')
+                : '';
+
+
+        $workingHours = '';
+
+
+        if (
+            $client?->check_in_time
+            && $client?->check_out_time
+        ) {
+
+            $mins =
+                Carbon::parse(
+                    $client->check_out_time
+                )->diffInMinutes(
+                    Carbon::parse(
+                        $client->check_in_time
+                    )
+                );
+
+
+            $workingHours =
+                sprintf(
+                    '%d:%02d',
+                    intdiv($mins, 60),
+                    $mins % 60
+                );
+        }
+
+
+        $rows = '';
+
+        $no = 1;
+
+
+        $period = CarbonPeriod::create(
+            $from,
+            $to
+        );
+
+
+        foreach ($period as $date) {
+
+            $key = $date->format('Y-m-d');
+
+            $att = $attendance->get($key);
+
+            $isWeekend = $date->isWeekend();
+
+            $hasWork =
+                $att
+                && $att->check_in;
+
+
+            // =====================================================
+            // TASK
+            // =====================================================
+
+            $task =
+                $att
+                    ? nl2br(
+                        e($att->task ?? '')
+                    )
+                    : '';
+
+
+            // =====================================================
+            // STATUS ABSENT
+            // =====================================================
+
+            if (
+                !$isWeekend
+                && !$att
+            ) {
+
+                $task = 'Absent';
+
+            } elseif (
+                !$isWeekend
+                && $att
+                && !$hasWork
+                && !$att->task
+            ) {
+
+                $task = 'Absent';
+            }
+
+
+            // =====================================================
+            // WEEKEND
+            // =====================================================
+
+            if ($isWeekend) {
+
+                $rowBg = '#D9D9D9';
+
+                $bold = 'font-weight:bold;';
+
+                if (!$task) {
+
+                    $task =
+                        $date->dayOfWeek === 6
+                            ? 'Sabtu'
+                            : 'Minggu';
+                }
+
+            } elseif (
+                $att
+                && !$hasWork
+                && $att->task
+            ) {
+
+                // Izin / Cuti / Sakit
+                $rowBg = '#FCE5CD';
+
+                $bold = 'font-weight:bold;';
+
+            } elseif (
+                !$att
+                || !$hasWork
+            ) {
+
+                // Absent
+                $rowBg = '#FCE8E8';
+
+                $bold = 'font-weight:bold;';
+
+            } else {
+
+                $rowBg = '#FFFFFF';
+
+                $bold = '';
+            }
+
+
+            // =====================================================
+            // TIME
+            // =====================================================
+
+            $rowTimeIn =
+                $hasWork
+                    ? $timeIn
+                    : '';
+
+
+            $rowTimeOut =
+                $hasWork
+                    ? $timeOut
+                    : '';
+
+
+            $rowWorkHours =
+                $hasWork
+                    ? $workingHours
+                    : '';
+
 
             $rows .= "
                 <tr style=\"background:{$rowBg};\">
-                    <td style=\"text-align:center;{$bold}\">{$no}</td>
-                    <td style=\"text-align:center;{$bold}\">{$date->format('j F Y')}</td>
-                    <td style=\"text-align:center;\">{$rowTimeIn}</td>
-                    <td style=\"text-align:center;\">{$rowTimeOut}</td>
-                    <td style=\"text-align:center;\">{$rowWorkHours}</td>
-                    <td style=\"text-align:left;white-space:pre-wrap;\">{$task}</td>
-                </tr>";
+
+                    <td style=\"text-align:center;{$bold}\">
+                        {$no}
+                    </td>
+
+                    <td style=\"text-align:center;{$bold}\">
+                        {$date->format('j F Y')}
+                    </td>
+
+                    <td style=\"text-align:center;\">
+                        {$rowTimeIn}
+                    </td>
+
+                    <td style=\"text-align:center;\">
+                        {$rowTimeOut}
+                    </td>
+
+                    <td style=\"text-align:center;\">
+                        {$rowWorkHours}
+                    </td>
+
+                    <td style=\"text-align:left;white-space:pre-wrap;\">
+                        {$task}
+                    </td>
+
+                </tr>
+            ";
+
 
             $no++;
         }
 
-        $companyName    = config('app.company_name', 'PT. Hermes Solusi Integrasi');
-        $companyAddress = config('app.company_address', '88@Kasablanka Office Tower, Lantai 3, Unit A Jl. Kasablanka Kav. 88, DKI Jakarta, 12870');
-        $employeeName   = e($employee->full_name ?? '-');
-        $employeeRole   = e($employee->position  ?? '-');
+
+        $companyName =
+            config(
+                'app.company_name',
+                'PT. Hermes Solusi Integrasi'
+            );
+
+
+        $companyAddress =
+            config(
+                'app.company_address',
+                '88@Kasablanka Office Tower, Lantai 3, Unit A Jl. Kasablanka Kav. 88, DKI Jakarta, 12870'
+            );
+
+
+        $employeeName =
+            e(
+                $employee->full_name ?? '-'
+            );
+
+
+        $employeeRole =
+            e(
+                $employee->position ?? '-'
+            );
+
+
+        $clientName =
+            e(
+                $client->name ?? '-'
+            );
+
+
+        $clientAddress =
+            e(
+                $client->address ?? '-'
+            );
+
 
         return <<<HTML
-        <html xmlns:o="urn:schemas-microsoft-com:office:office"
-            xmlns:x="urn:schemas-microsoft-com:office:excel"
-            xmlns:v="urn:schemas-microsoft-com:vml"
-            xmlns="http://www.w3.org/TR/REC-html40">
-        <head>
-            <meta charset="UTF-8"/>
-            <!--[if gte mso 9]>
-            <xml>
-                <x:ExcelWorkbook>
-                    <x:ExcelWorksheets>
-                        <x:ExcelWorksheet>
-                            <x:Name>Timesheet</x:Name>
-                            <x:WorksheetOptions>
-                                <x:Print>
-                                    <x:FitWidth>1</x:FitWidth>
-                                    <x:FitHeight>0</x:FitHeight>
-                                    <x:Landscape/>
-                                </x:Print>
-                            </x:WorksheetOptions>
-                        </x:ExcelWorksheet>
-                    </x:ExcelWorksheets>
-                </x:ExcelWorkbook>
-            </xml>
-            <![endif]-->
-            <style>
-                body, table, td, th {
-                    font-family: Arial, sans-serif;
-                    font-size: 10pt;
-                }
-                table {
-                    border-collapse: collapse;
-                    width: 100%;
-                }
-                td, th {
-                    border: 1px solid #BFBFBF;
-                    padding: 4px 8px;
-                    vertical-align: middle;
-                }
-                .nb td           { border: none; }
-                .company-name    { font-size:13pt; font-weight:bold; color:#1F4E79; border:none; }
-                .company-address { font-size:9pt; color:#555555; border:none; }
-                .title-row td {
-                    background:#1F4E79; color:#FFFFFF;
-                    font-size:14pt; font-weight:bold;
-                    text-align:center; border:none; padding:8px;
-                }
-                .spacer td  { border:none; padding:2px; }
-                .info-label { font-weight:bold; width:130px; border:none; }
-                .info-value { border:none; }
-                .col-header th {
-                    background:#1F4E79; color:#FFFFFF;
-                    text-align:center; font-weight:bold; padding:6px 8px;
-                }
-            </style>
-        </head>
-        <body>
-        <table>
+<html>
+<head>
 
-            <!-- Logo + Perusahaan -->
-            <tr class="nb">
-                <td colspan="5" class="company-name">{$companyName}</td>
-            </tr>
-            <tr class="nb">
-                <td colspan="5" class="company-address">{$companyAddress}</td>
-            </tr>
+<meta charset="UTF-8"/>
 
-            <tr class="spacer"><td colspan="6"></td></tr>
+<style>
 
-            <!-- Judul -->
-            <tr class="title-row"><td colspan="6">TIMESHEET</td></tr>
+    body,
+    table,
+    td,
+    th {
 
-            <tr class="spacer"><td colspan="6"></td></tr>
+        font-family: Arial, sans-serif;
 
-            <!-- Info karyawan -->
-            <tr class="nb">
-                <td class="info-label">Consultant Name</td>
-                <td colspan="5" class="info-value">: {$employeeName}</td>
-            </tr>
-            <tr class="nb">
-                <td class="info-label">Role</td>
-                <td colspan="5" class="info-value">: {$employeeRole}</td>
-            </tr>
-            <tr class="nb">
-                <td class="info-label">Periode</td>
-                <td colspan="5" class="info-value">: {$periode}</td>
-            </tr>
+        font-size: 10pt;
+    }
 
-            <tr class="spacer"><td colspan="6"></td></tr>
 
-            <!-- Header tabel -->
-            <tr class="col-header">
-                <th style="width:35px;">No.</th>
-                <th style="width:120px;">Date</th>
-                <th style="width:75px;">Time In</th>
-                <th style="width:75px;">Time Out</th>
-                <th style="width:110px;">Working Hours</th>
-                <th>Task</th>
-            </tr>
+    table {
 
-            <!-- Data -->
-            {$rows}
+        border-collapse: collapse;
 
-        </table>
-        </body>
-        </html>
-        HTML;
+        width: 100%;
+    }
+
+
+    td,
+    th {
+
+        border: 1px solid #BFBFBF;
+
+        padding: 4px 8px;
+
+        vertical-align: middle;
+    }
+
+
+    .nb td {
+
+        border: none;
+    }
+
+
+    .company-name {
+
+        font-size: 13pt;
+
+        font-weight: bold;
+
+        color: #1F4E79;
+
+        border: none;
+    }
+
+
+    .company-address {
+
+        font-size: 9pt;
+
+        color: #555555;
+
+        border: none;
+    }
+
+
+    .title-row td {
+
+        background: #1F4E79;
+
+        color: #FFFFFF;
+
+        font-size: 14pt;
+
+        font-weight: bold;
+
+        text-align: center;
+
+        border: none;
+
+        padding: 8px;
+    }
+
+
+    .info-label {
+
+        font-weight: bold;
+
+        width: 130px;
+
+        border: none;
+    }
+
+
+    .info-value {
+
+        border: none;
+    }
+
+
+    .summary-header {
+
+        background: #D9E2F3;
+
+        font-weight: bold;
+
+        text-align: center;
+    }
+
+
+    .col-header th {
+
+        background: #1F4E79;
+
+        color: #FFFFFF;
+
+        text-align: center;
+
+        font-weight: bold;
+
+        padding: 6px 8px;
+    }
+
+
+    .weekend {
+
+        background: #D9D9D9;
+    }
+
+</style>
+
+</head>
+
+<body>
+
+<table>
+
+    <tr class="nb">
+
+        <td colspan="6"
+            class="company-name">
+
+            {$companyName}
+
+        </td>
+
+    </tr>
+
+
+    <tr class="nb">
+
+        <td colspan="6"
+            class="company-address">
+
+            {$companyAddress}
+
+        </td>
+
+    </tr>
+
+
+    <tr class="nb">
+
+        <td colspan="6"
+            class="company-address">
+
+            Client: {$clientName}
+
+        </td>
+
+    </tr>
+
+
+    <tr class="nb">
+
+        <td colspan="6"
+            class="company-address">
+
+            Client Address: {$clientAddress}
+
+        </td>
+
+    </tr>
+
+
+    <tr>
+        <td colspan="6"
+            style="border:none;height:10px;">
+        </td>
+    </tr>
+
+
+    <tr class="title-row">
+
+        <td colspan="6">
+            TIMESHEET
+        </td>
+
+    </tr>
+
+
+    <tr>
+        <td colspan="6"
+            style="border:none;height:10px;">
+        </td>
+    </tr>
+
+
+    <tr class="nb">
+
+        <td class="info-label">
+            Consultant Name
+        </td>
+
+        <td colspan="5"
+            class="info-value">
+
+            : {$employeeName}
+
+        </td>
+
+    </tr>
+
+
+    <tr class="nb">
+
+        <td class="info-label">
+            Role
+        </td>
+
+        <td colspan="5"
+            class="info-value">
+
+            : {$employeeRole}
+
+        </td>
+
+    </tr>
+
+
+    <tr class="nb">
+
+        <td class="info-label">
+            Client
+        </td>
+
+        <td colspan="5"
+            class="info-value">
+
+            : {$clientName}
+
+        </td>
+
+    </tr>
+
+
+    <tr class="nb">
+
+        <td class="info-label">
+            Periode
+        </td>
+
+        <td colspan="5"
+            class="info-value">
+
+            : {$periode}
+
+        </td>
+
+    </tr>
+
+
+    <tr>
+        <td colspan="6"
+            style="border:none;height:10px;">
+        </td>
+    </tr>
+
+
+    <!-- SUMMARY -->
+
+    <tr>
+
+        <td colspan="6"
+            class="summary-header">
+
+            ATTENDANCE SUMMARY
+
+        </td>
+
+    </tr>
+
+
+    <tr>
+
+        <td>
+            Working Days
+        </td>
+
+        <td style="text-align:center;">
+            {$summary['totalDays']}
+        </td>
+
+        <td>
+            Present
+        </td>
+
+        <td style="text-align:center;">
+            {$summary['totalPresent']}
+        </td>
+
+        <td>
+            Absent
+        </td>
+
+        <td style="text-align:center;">
+            {$summary['totalAbsent']}
+        </td>
+
+    </tr>
+
+
+    <tr>
+
+        <td>
+            Permit
+        </td>
+
+        <td style="text-align:center;">
+            {$summary['totalPermit']}
+        </td>
+
+        <td>
+            Leave
+        </td>
+
+        <td style="text-align:center;">
+            {$summary['totalLeave']}
+        </td>
+
+        <td>
+            Sick
+        </td>
+
+        <td style="text-align:center;">
+            {$summary['totalSick']}
+        </td>
+
+    </tr>
+
+
+    <tr>
+        <td colspan="6"
+            style="border:none;height:10px;">
+        </td>
+    </tr>
+
+
+    <!-- TABLE HEADER -->
+
+    <tr class="col-header">
+
+        <th style="width:35px;">
+            No.
+        </th>
+
+        <th style="width:120px;">
+            Date
+        </th>
+
+        <th style="width:75px;">
+            Time In
+        </th>
+
+        <th style="width:75px;">
+            Time Out
+        </th>
+
+        <th style="width:110px;">
+            Working Hours
+        </th>
+
+        <th>
+            Task
+        </th>
+
+    </tr>
+
+
+    {$rows}
+
+</table>
+
+</body>
+</html>
+HTML;
     }
 
     public function manual(Request $request)
