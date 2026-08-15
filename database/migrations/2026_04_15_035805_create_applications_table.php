@@ -20,6 +20,10 @@ return new class extends Migration
             $table->foreignId('applicant_id')->constrained()->cascadeOnDelete();
 
             $table->text('cover_letter')->nullable();
+            $table->string('status')->default('submitted');
+            $table->date('interview_date')->nullable();
+            $table->time('interview_time')->nullable();
+            $table->string('interview_location')->nullable();
 
             $table->boolean('is_followed_up')->default(false);
             $table->timestamp('followed_up_at')->nullable();

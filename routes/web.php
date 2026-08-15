@@ -116,3 +116,35 @@ Route::middleware('auth')->group(function () {
 Route::get('/career-public', [PublicController::class, 'index'])->name('public.index');
 Route::get('/career-public/{slug}', [PublicController::class, 'show'])->name('public.show');
 Route::post('/career-public/apply', [PublicController::class, 'apply'])->name('public.apply');
+
+Route::get('/test-email', function () {
+
+    Mail::raw(
+        'Ini adalah email testing dari Laravel menggunakan SMTP Gmail.',
+        function ($message) {
+
+            $message->to('rizkifadilla42@gmail.com')
+                    ->subject('Test Email Laravel SMTP');
+        }
+    );
+
+    return 'Email berhasil dikirim.';
+});
+
+Route::get('/tracking-application', [PublicController::class, 'tracking'])
+    ->name('public.tracking');
+
+Route::post('/tracking-application/send-otp', [PublicController::class, 'sendTrackingOtp'])
+    ->name('public.tracking.send-otp');
+
+Route::get('/tracking-application/otp', [PublicController::class, 'trackingOtp'])
+    ->name('public.tracking.otp');
+
+Route::post('/tracking-application/verify-otp', [PublicController::class, 'verifyTrackingOtp'])
+    ->name('public.tracking.verify-otp');
+
+Route::get('/tracking-application/result', [PublicController::class, 'trackingResult'])
+    ->name('public.tracking.result');
+
+Route::post('/tracking-application/logout', [PublicController::class, 'trackingLogout'])
+    ->name('public.tracking.logout');

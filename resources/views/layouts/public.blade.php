@@ -84,9 +84,17 @@
                         <li class="nav-item">
                             <a
                                 class="nav-link"
-                                href="{{ route('career.index') }}"
+                                href="{{ route('public.index') }}"
                             >
                                 Vacancy
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a
+                                class="nav-link"
+                                href="{{ route('public.tracking') }}"
+                            >
+                                Track Application
                             </a>
                         </li>
                     </ul>

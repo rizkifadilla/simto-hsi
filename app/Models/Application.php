@@ -12,9 +12,19 @@ class Application extends Model
         'job_id',
         'applicant_id',
         'cover_letter',
+        'status',
+        'interview_date',
+        'interview_time',
+        'interview_location',
         'is_followed_up',
         'followed_up_at',
         'notes'
+    ];
+
+    protected $casts = [
+        'interview_date' => 'date',
+        'interview_time' => 'datetime:H:i',
+        'followed_up_at' => 'datetime',
     ];
 
     public function job()

@@ -6,6 +6,8 @@ use App\Models\Job;
 use App\Models\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use App\Mail\InterviewInvitation;
+use Illuminate\Support\Facades\Mail;
 
 
 class JobController extends Controller
@@ -54,6 +56,7 @@ class JobController extends Controller
                 'salary_max' => $request->salary_max,
                 'deadline' => $request->deadline,
                 'is_active' => $request->is_active ? 1 : 0,
+                'created_by' => auth()->id(),
             ]);
 
             return redirect()->route('career.index')->with('success', 'Job added successfully');
@@ -150,21 +153,124 @@ class JobController extends Controller
         ]);
     }
 
+    // public function updateApplication(Request $request, $id)
+    // {
+    //     $app = Application::findOrFail($id);
+
+    //     $app->notes = $request->notes;
+
+    //     // follow up toggle
+    //     if ($request->has('follow_up')) {
+    //         $app->followed_up_at = now();
+    //     } else {
+    //         $app->followed_up_at = null;
+    //     }
+
+    //     $app->save();
+
+    //     return back()->with('success', 'Data updated!');
+    // }
     public function updateApplication(Request $request, $id)
     {
-        $app = Application::findOrFail($id);
+        $application = Application::with([
+            'applicant',
+            'job'
+        ])->findOrFail($id);
 
-        $app->notes = $request->notes;
+        $request->validate([
+            'status' => 'required|in:submitted,screening,interview,accepted,rejected',
 
-        // follow up toggle
-        if ($request->has('follow_up')) {
-            $app->followed_up_at = now();
+            'interview_date' => 'nullable|date|required_if:status,interview',
+
+            'interview_time' => 'nullable|date_format:H:i|required_if:status,interview',
+
+            'interview_location' => 'nullable|string|max:255|required_if:status,interview',
+
+            'notes' => 'nullable|string',
+
+            'follow_up' => 'nullable|boolean',
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | STATUS LAMA
+        |--------------------------------------------------------------------------
+        */
+
+        $oldStatus = $application->status;
+
+        /*
+        |--------------------------------------------------------------------------
+        | UPDATE APPLICATION
+        |--------------------------------------------------------------------------
+        */
+
+        $application->status = $request->status;
+
+        $application->notes = $request->notes;
+
+        /*
+        |--------------------------------------------------------------------------
+        | FOLLOW UP
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->boolean('follow_up')) {
+
+            $application->is_followed_up = true;
+
+            if (!$application->followed_up_at) {
+                $application->followed_up_at = now();
+            }
+
         } else {
-            $app->followed_up_at = null;
+
+            $application->is_followed_up = false;
+            $application->followed_up_at = null;
         }
 
-        $app->save();
+        /*
+        |--------------------------------------------------------------------------
+        | INTERVIEW DATA
+        |--------------------------------------------------------------------------
+        */
 
-        return back()->with('success', 'Data updated!');
+        if ($request->status === 'interview') {
+
+            $application->interview_date = $request->interview_date;
+            $application->interview_time = $request->interview_time;
+            $application->interview_location = $request->interview_location;
+
+        } else {
+
+            $application->interview_date = null;
+            $application->interview_time = null;
+            $application->interview_location = null;
+        }
+
+        $application->save();
+
+        /*
+        |--------------------------------------------------------------------------
+        | SEND INTERVIEW EMAIL
+        |--------------------------------------------------------------------------
+        |
+        | Hanya kirim ketika status berubah menjadi interview.
+        |
+        */
+
+        if (
+            $request->status === 'interview'
+            && $oldStatus !== 'interview'
+        ) {
+
+            Mail::to($application->applicant->email)
+                ->send(new InterviewInvitation($application));
+        }
+
+        return back()->with(
+            'success',
+            'Application updated successfully'
+        );
     }
 }

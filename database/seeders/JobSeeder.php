@@ -4,12 +4,23 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Job;
+use App\Models\User;
 
 class JobSeeder extends Seeder
 {
     public function run(): void
     {
-        Job::insert([
+        $user = User::first();
+
+        if (!$user) {
+            $this->command->error(
+                'Tidak ada user. Silakan buat user terlebih dahulu.'
+            );
+
+            return;
+        }
+
+        $jobs = [
             [
                 'title' => 'Backend Developer',
                 'slug' => 'backend-developer',
@@ -22,9 +33,8 @@ class JobSeeder extends Seeder
                 'salary_max' => 8000000,
                 'deadline' => now()->addDays(30),
                 'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
+
             [
                 'title' => 'Frontend Developer',
                 'slug' => 'frontend-developer',
@@ -37,9 +47,22 @@ class JobSeeder extends Seeder
                 'salary_max' => 7000000,
                 'deadline' => now()->addDays(20),
                 'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
-        ]);
+        ];
+
+        foreach ($jobs as $job) {
+
+            Job::updateOrCreate(
+                [
+                    'slug' => $job['slug'],
+                ],
+                array_merge(
+                    $job,
+                    [
+                        'created_by' => $user->id,
+                    ]
+                )
+            );
+        }
     }
 }

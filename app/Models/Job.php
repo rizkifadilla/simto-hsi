@@ -10,6 +10,7 @@ class Job extends Model
 {
     use HasFactory;
     protected $fillable = [
+        'created_by',
         'title',
         'slug',
         'description',
@@ -37,5 +38,10 @@ class Job extends Model
     public function applications()
     {
         return $this->hasMany(Application::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }
