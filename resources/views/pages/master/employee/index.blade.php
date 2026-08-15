@@ -629,16 +629,15 @@
 
 
                 {{-- =================================================
-                     FILTER
+                    FILTER
                 ================================================= --}}
 
                 <form method="GET"
-                      id="filterForm"
-                      class="row mb-4">
+                    id="filterForm"
+                    class="row mb-4">
 
 
                     {{-- CLIENT FILTER --}}
-
                     <div class="col-md-3">
 
                         <label>
@@ -669,7 +668,6 @@
 
 
                     {{-- DIVISION FILTER --}}
-
                     <div class="col-md-3">
 
                         <label>
@@ -699,12 +697,11 @@
                     </div>
 
 
-                    {{-- STATUS FILTER --}}
-
+                    {{-- EMPLOYEE STATUS --}}
                     <div class="col-md-3">
 
                         <label>
-                            Status
+                            Employee Status
                         </label>
 
                         <select name="status"
@@ -733,9 +730,41 @@
                     </div>
 
 
-                    {{-- FILTER BUTTON --}}
+                    {{-- CONTRACT STATUS --}}
+                    <div class="col-md-3">
 
-                    <div class="col-md-3 d-flex align-items-end">
+                        <label>
+                            Contract Status
+                        </label>
+
+                        <select name="contract_expiring"
+                                class="form-control">
+
+                            <option value="">
+                                All Contract
+                            </option>
+
+                            <option value="30"
+                                {{ $contractExpiringFilter == '30' ? 'selected' : '' }}>
+
+                                Expiring Within 30 Days
+
+                            </option>
+
+                            <option value="expired"
+                                {{ $contractExpiringFilter == 'expired' ? 'selected' : '' }}>
+
+                                Expired
+
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    {{-- BUTTON --}}
+                    <div class="col-md-12 mt-3">
 
                         <button type="submit"
                                 class="btn btn-primary mr-2">
@@ -748,7 +777,9 @@
 
 
                         <a href="{{ route('employees.index') }}"
-                           class="btn btn-secondary">
+                        class="btn btn-secondary">
+
+                            <i class="fas fa-sync-alt"></i>
 
                             Reset
 

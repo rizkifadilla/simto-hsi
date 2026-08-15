@@ -22,7 +22,9 @@ class EmployeeController extends Controller
         $clientId = $request->client_id;
         $division = $request->division;
         $status = $request->status;
-        $contractExpiring = $request->contract_expiring;
+
+        // Contract filter
+        $contractExpiringFilter = $request->contract_expiring;
 
 
         // =========================================================
@@ -51,11 +53,42 @@ class EmployeeController extends Controller
 
 
         // =========================================================
-        // FILTER STATUS
+        // FILTER EMPLOYEE STATUS
         // =========================================================
 
         if ($status) {
             $query->where('status', $status);
+        }
+
+
+        // =========================================================
+        // FILTER CONTRACT
+        // =========================================================
+
+        if ($contractExpiringFilter) {
+
+            $today = Carbon::today();
+
+            // CONTRACT EXPIRING <= 30 DAYS
+            if ($contractExpiringFilter == '30') {
+
+                $thirtyDays = Carbon::today()->addDays(30);
+
+                $query->whereNotNull('contract_end')
+                    ->whereDate('contract_end', '>=', $today)
+                    ->whereDate('contract_end', '<=', $thirtyDays);
+
+            }
+
+
+            // CONTRACT EXPIRED
+            elseif ($contractExpiringFilter == 'expired') {
+
+                $query->whereNotNull('contract_end')
+                    ->whereDate('contract_end', '<', $today);
+
+            }
+
         }
 
 
@@ -66,33 +99,6 @@ class EmployeeController extends Controller
         $employees = $query
             ->orderBy('full_name')
             ->get();
-
-
-        // =========================================================
-        // FILTER CONTRACT EXPIRING < 30 DAYS
-        // =========================================================
-
-        if ($contractExpiring == '30') {
-
-            $today = Carbon::today();
-            $thirtyDays = Carbon::today()->addDays(30);
-
-            $employees = $employees->filter(function ($employee) use (
-                $today,
-                $thirtyDays
-            ) {
-
-                if (!$employee->contract_end) {
-                    return false;
-                }
-
-                $contractEnd = Carbon::parse($employee->contract_end);
-
-                return $contractEnd->greaterThanOrEqualTo($today)
-                    && $contractEnd->lessThanOrEqualTo($thirtyDays);
-            });
-
-        }
 
 
         // =========================================================
@@ -244,7 +250,7 @@ class EmployeeController extends Controller
             'status' => $status,
 
             // Contract filter
-            'contractExpiringFilter' => $request->contract_expiring,
+            'contractExpiringFilter' => $contractExpiringFilter,
 
             'type_menu' => 'master'
         ]);
